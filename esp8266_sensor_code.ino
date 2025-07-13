@@ -254,7 +254,7 @@ void sendSensorData() {
   // Sensör değerleri
   JsonObject values = jsonDoc.createNestedObject("values");
   values["dissolved_oxygen"] = round(dissolvedOxygen * 100) / 100.0;  // 2 ondalık basamak
-  values["ph"] = round(ph * 100) / 100.0;
+  values["ph"] = round(ph * 100) / 100.0;  // 'ph' küçük harfle (frontend ile uyumlu)
   values["conductivity"] = round(conductivity);
   values["water_temp"] = round(waterTemp * 100) / 100.0;
   values["air_temp"] = round(airTemp * 100) / 100.0;        // DHT11'den gerçek veri

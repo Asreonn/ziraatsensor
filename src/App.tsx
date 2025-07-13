@@ -10,9 +10,16 @@ import {
   Box,
   CircularProgress,
   LinearProgress,
-
   Button,
-  Snackbar
+  Snackbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import {
   WaterDrop,
@@ -25,7 +32,9 @@ import {
   Warning,
   PlayArrow,
   Stop,
-  Settings
+  Settings,
+  Download,
+  History
 } from '@mui/icons-material';
 import {
   Chart as ChartJS,
@@ -34,7 +43,7 @@ import {
   PointElement,
   LineElement,
   Title,
-  Tooltip,
+  Tooltip as ChartTooltip,
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
@@ -47,7 +56,7 @@ ChartJS.register(
   PointElement,
   LineElement,
   Title,
-  Tooltip,
+  ChartTooltip,
   Legend
 );
 
@@ -62,7 +71,7 @@ interface SensorData {
   };
   values: {
     dissolved_oxygen: number;
-    pH: number;
+    ph: number; // ESP8266 kodunda 'ph' küçük harfle gönderiliyor
     conductivity: number;
     water_temp: number;
     air_temp: number;
@@ -74,7 +83,7 @@ interface SensorData {
 interface HistoryData {
   time: string;
   dissolved_oxygen: number;
-  pH: number;
+  ph: number; // Burayı da güncelleyelim
   conductivity: number;
   water_temp: number;
   air_temp: number;
@@ -99,11 +108,97 @@ const App: React.FC = () => {
     timestamp: null
   });
   const [motorLoading, setMotorLoading] = useState<boolean>(false);
-  const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error'}>({
+  const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error' | 'warning'}>({
     open: false,
     message: '',
     severity: 'success'
   });
+  
+  // CSV export ve localStorage için extended history
+  const [fullHistory, setFullHistory] = useState<HistoryData[]>([]);
+
+  // CSV export fonksiyonu
+  const exportToCSV = () => {
+    if (fullHistory.length === 0) {
+      setSnackbar({
+        open: true,
+        message: 'Henüz kaydedilmiş veri bulunmuyor',
+        severity: 'warning'
+      });
+      return;
+    }
+
+    const headers = [
+      'Zaman',
+      'Çözünmüş Oksijen (mg/L)',
+      'pH Değeri', 
+      'İletkenlik (µS/cm)',
+      'Su Sıcaklığı (°C)',
+      'Hava Sıcaklığı (°C)',
+      'Hava Nemi (%)'
+    ];
+
+    const csvData = [
+      headers.join(','),
+      ...fullHistory.map(row => [
+        `"${row.time}"`,
+        row.dissolved_oxygen || 0,
+        row.ph || 0,
+        row.conductivity || 0, 
+        row.water_temp || 0,
+        row.air_temp || 0,
+        row.air_humidity || 0
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvData], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `ziraat-sensor-data-${new Date().toLocaleDateString('tr-TR').replace(/\./g, '-')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setSnackbar({
+      open: true,
+      message: `${fullHistory.length} kayıt CSV olarak indirildi`,
+      severity: 'success'
+    });
+  };
+
+  // localStorage'dan veri yükle
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('ziraat-sensor-history');
+    if (savedHistory) {
+      try {
+        const parsed = JSON.parse(savedHistory);
+        setFullHistory(parsed);
+      } catch (error) {
+        console.error('localStorage veri okuma hatası:', error);
+      }
+    }
+  }, []);
+
+  // Veri geldiğinde hem history hem fullHistory'yi güncelle ve localStorage'a kaydet
+  const saveToHistory = (newEntry: HistoryData) => {
+    setHistory(prev => {
+      const updated = [...prev, newEntry];
+      return updated.slice(-20);
+    });
+    
+    setFullHistory(prev => {
+      const updated = [...prev, newEntry];
+      // localStorage'a kaydet
+      try {
+        localStorage.setItem('ziraat-sensor-history', JSON.stringify(updated));
+      } catch (error) {
+        console.error('localStorage kayıt hatası:', error);
+      }
+      return updated;
+    });
+  };
 
   const getBaseURL = () => {
     return process.env.NODE_ENV === 'production' 
@@ -129,10 +224,7 @@ const App: React.FC = () => {
         ...data.values
       };
       
-      setHistory(prev => {
-        const updated = [...prev, newHistoryEntry];
-        return updated.slice(-20);
-      });
+      saveToHistory(newHistoryEntry); // saveToHistory fonksiyonunu kullan
       
       // Sadece ilk yüklemede loading'i false yap
       if (isInitialLoad) {
@@ -192,7 +284,7 @@ const App: React.FC = () => {
   const getSensorIcon = (type: string) => {
     switch (type) {
       case 'dissolved_oxygen': return <OpacityOutlined color="primary" />;
-      case 'pH': return <WaterDrop color="secondary" />;
+      case 'ph': return <WaterDrop color="secondary" />;
       case 'conductivity': return <DeviceHub color="warning" />;
       case 'water_temp': return <Thermostat color="info" />;
       case 'air_temp': return <Thermostat color="error" />;
@@ -204,7 +296,7 @@ const App: React.FC = () => {
   const getSensorUnit = (type: string) => {
     switch (type) {
       case 'dissolved_oxygen': return 'mg/L';
-      case 'pH': return '';
+      case 'ph': return '';
       case 'conductivity': return 'µS/cm';
       case 'water_temp': return '°C';
       case 'air_temp': return '°C';
@@ -216,7 +308,7 @@ const App: React.FC = () => {
   const getSensorName = (type: string) => {
     switch (type) {
       case 'dissolved_oxygen': return 'Çözünmüş Oksijen';
-      case 'pH': return 'pH Değeri';
+      case 'ph': return 'pH Değeri';
       case 'conductivity': return 'İletkenlik';
       case 'water_temp': return 'Su Sıcaklığı';
       case 'air_temp': return 'Hava Sıcaklığı';
@@ -262,7 +354,7 @@ const App: React.FC = () => {
       range: { min: 0, max: 15 }
     },
     {
-      key: 'pH' as keyof HistoryData,
+      key: 'ph' as keyof HistoryData,
       label: 'pH Değeri',
       color: 'rgb(255, 99, 132)',
       range: { min: 4, max: 10 }
@@ -759,7 +851,7 @@ const App: React.FC = () => {
                     config.label,
                     config.range.min,
                     config.range.max,
-                    config.key === 'pH' ? '' : 
+                    config.key === 'ph' ? '' : 
                     config.key === 'conductivity' ? 'µS/cm' :
                     config.key === 'dissolved_oxygen' ? 'mg/L' :
                     config.key === 'air_humidity' ? '%' : '°C'
@@ -767,6 +859,161 @@ const App: React.FC = () => {
                 />
               </Box>
             ))}
+          </Box>
+        </Paper>
+      )}
+
+      {/* CSV Export ve Geçmiş Veriler */}
+      {fullHistory.length > 0 && (
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: { xs: 3, sm: 4 },
+            borderRadius: 3,
+            backgroundColor: 'white',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            border: '1px solid #e2e8f0'
+          }}
+        >
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            mb: 3,
+            flexWrap: 'wrap',
+            gap: 2
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box sx={{ 
+                width: 48, 
+                height: 48, 
+                borderRadius: '12px',
+                backgroundColor: '#f0f9ff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1px solid #e0f2fe'
+              }}>
+                <History color="primary" />
+              </Box>
+              <Box>
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    color: '#1e293b',
+                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                  }}
+                >
+                  📊 Tüm Geçmiş Veriler
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    color: '#64748b',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  {fullHistory.length} kayıt • Yerel depolamada saklanıyor
+                </Typography>
+              </Box>
+            </Box>
+            
+            <Tooltip title="Tüm verileri CSV dosyası olarak indir">
+              <Button
+                variant="contained"
+                startIcon={<Download />}
+                onClick={exportToCSV}
+                sx={{ 
+                  backgroundColor: '#059669',
+                  '&:hover': { backgroundColor: '#047857' },
+                  borderRadius: 2,
+                  px: 3,
+                  py: 1,
+                  boxShadow: '0 4px 14px rgba(5, 150, 105, 0.4)',
+                  textTransform: 'none',
+                  fontWeight: 600
+                }}
+              >
+                CSV İndir
+              </Button>
+            </Tooltip>
+          </Box>
+
+          <TableContainer 
+            sx={{ 
+              maxHeight: 400, 
+              overflowY: 'auto',
+              border: '1px solid #e2e8f0',
+              borderRadius: 2
+            }}
+          >
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600, backgroundColor: '#f8fafc' }}>
+                    Zaman
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, backgroundColor: '#f8fafc' }}>
+                    Çözünmüş O₂
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, backgroundColor: '#f8fafc' }}>
+                    pH
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, backgroundColor: '#f8fafc' }}>
+                    İletkenlik
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, backgroundColor: '#f8fafc' }}>
+                    Su Sıcaklık
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, backgroundColor: '#f8fafc' }}>
+                    Hava Sıcaklık
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, backgroundColor: '#f8fafc' }}>
+                    Hava Nemi
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {fullHistory.slice().reverse().map((row, index) => (
+                  <TableRow 
+                    key={index}
+                    sx={{ 
+                      '&:nth-of-type(odd)': { backgroundColor: '#f9fafb' },
+                      '&:hover': { backgroundColor: '#f3f4f6' }
+                    }}
+                  >
+                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                      {row.time}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 500 }}>
+                      {(row.dissolved_oxygen || 0).toFixed(2)} mg/L
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 500 }}>
+                      {(row.ph || 0).toFixed(2)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 500 }}>
+                      {(row.conductivity || 0).toFixed(0)} µS/cm
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 500 }}>
+                      {(row.water_temp || 0).toFixed(1)} °C
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 500 }}>
+                      {(row.air_temp || 0).toFixed(1)} °C
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 500 }}>
+                      {(row.air_humidity || 0).toFixed(1)} %
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography variant="caption" sx={{ color: '#64748b' }}>
+              Son eklenen veriler tablonun üstünde gösterilir • Veriler tarayıcınızda güvenli şekilde saklanır
+            </Typography>
           </Box>
         </Paper>
       )}

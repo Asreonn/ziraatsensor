@@ -19,8 +19,8 @@ export default function handler(req, res) {
         ip: "10.0.0.5"
       },
       values: {
-        dissolved_o2: parseFloat((Math.random() * 5 + 8).toFixed(2)),
-        pH: parseFloat((Math.random() * 2 + 6).toFixed(2)),
+        dissolved_oxygen: parseFloat((Math.random() * 5 + 8).toFixed(2)),
+        ph: parseFloat((Math.random() * 2 + 6).toFixed(2)),
         conductivity: Math.floor(Math.random() * 500 + 1500),
         water_temp: parseFloat((Math.random() * 10 + 20).toFixed(1)),
         air_temp: parseFloat((Math.random() * 15 + 25).toFixed(1)),
