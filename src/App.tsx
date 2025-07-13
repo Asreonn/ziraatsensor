@@ -10,7 +10,7 @@ import {
   Box,
   CircularProgress,
   LinearProgress,
-  Divider,
+
   Button,
   Snackbar
 } from '@mui/material';
@@ -61,7 +61,7 @@ interface SensorData {
     ip: string;
   };
   values: {
-    dissolved_o2: number;
+    dissolved_oxygen: number;
     pH: number;
     conductivity: number;
     water_temp: number;
@@ -73,7 +73,7 @@ interface SensorData {
 
 interface HistoryData {
   time: string;
-  dissolved_o2: number;
+  dissolved_oxygen: number;
   pH: number;
   conductivity: number;
   water_temp: number;
@@ -111,7 +111,7 @@ const App: React.FC = () => {
       : 'http://localhost:3001';
   };
 
-  const fetchSensorData = async () => {
+  const fetchSensorData = async (isInitialLoad = false) => {
     try {
       setError(null);
       const response = await axios.get(`${getBaseURL()}/api/sensor-data`);
@@ -134,14 +134,21 @@ const App: React.FC = () => {
         return updated.slice(-20);
       });
       
-      setLoading(false);
+      // Sadece ilk yüklemede loading'i false yap
+      if (isInitialLoad) {
+        setLoading(false);
+      }
     } catch (err: any) {
       if (err.response?.status === 404) {
         setError('ESP cihazından veri bekleniyor...');
       } else {
         setError('Bağlantı hatası: ' + (err.message || 'Bilinmeyen hata'));
       }
-      setLoading(false);
+      
+      // Sadece ilk yüklemede loading'i false yap
+      if (isInitialLoad) {
+        setLoading(false);
+      }
     }
   };
 
@@ -173,10 +180,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // İlk yükleme
-    fetchSensorData();
+    fetchSensorData(true);
     
-    // Her 10 saniyede bir güncelle
-    const interval = setInterval(fetchSensorData, 10000);
+    // Her 1 saniyede bir güncelle (background update)
+    const interval = setInterval(() => fetchSensorData(false), 1000);
     
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -184,7 +191,7 @@ const App: React.FC = () => {
 
   const getSensorIcon = (type: string) => {
     switch (type) {
-      case 'dissolved_o2': return <OpacityOutlined color="primary" />;
+      case 'dissolved_oxygen': return <OpacityOutlined color="primary" />;
       case 'pH': return <WaterDrop color="secondary" />;
       case 'conductivity': return <DeviceHub color="warning" />;
       case 'water_temp': return <Thermostat color="info" />;
@@ -196,7 +203,7 @@ const App: React.FC = () => {
 
   const getSensorUnit = (type: string) => {
     switch (type) {
-      case 'dissolved_o2': return 'mg/L';
+      case 'dissolved_oxygen': return 'mg/L';
       case 'pH': return '';
       case 'conductivity': return 'µS/cm';
       case 'water_temp': return '°C';
@@ -208,7 +215,7 @@ const App: React.FC = () => {
 
   const getSensorName = (type: string) => {
     switch (type) {
-      case 'dissolved_o2': return 'Çözünmüş Oksijen';
+      case 'dissolved_oxygen': return 'Çözünmüş Oksijen';
       case 'pH': return 'pH Değeri';
       case 'conductivity': return 'İletkenlik';
       case 'water_temp': return 'Su Sıcaklığı';
@@ -225,55 +232,69 @@ const App: React.FC = () => {
     return { strength: 'Zayıf', color: 'error' as const };
   };
 
-  const chartData = {
+  // Her sensör için ayrı grafik verisi
+  const createChartData = (sensorKey: keyof HistoryData, label: string, color: string) => ({
     labels: history.map(item => item.time),
     datasets: [
       {
-        label: 'Çözünmüş O₂ (mg/L)',
-        data: history.map(item => item.dissolved_o2),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        tension: 0.1
-      },
-      {
-        label: 'pH',
-        data: history.map(item => item.pH),
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        tension: 0.1
-      },
-      {
-        label: 'İletkenlik (µS/cm)',
-        data: history.map(item => item.conductivity),
-        borderColor: 'rgb(255, 159, 64)',
-        backgroundColor: 'rgba(255, 159, 64, 0.2)',
-        tension: 0.1
-      },
-      {
-        label: 'Su Sıcaklığı (°C)',
-        data: history.map(item => item.water_temp),
-        borderColor: 'rgb(54, 162, 235)',
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        tension: 0.1
-      },
-      {
-        label: 'Hava Sıcaklığı (°C)',
-        data: history.map(item => item.air_temp),
-        borderColor: 'rgb(255, 205, 86)',
-        backgroundColor: 'rgba(255, 205, 86, 0.2)',
-        tension: 0.1
-      },
-      {
-        label: 'Hava Nemi (%)',
-        data: history.map(item => item.air_humidity),
-        borderColor: 'rgb(153, 102, 255)',
-        backgroundColor: 'rgba(153, 102, 255, 0.2)',
-        tension: 0.1
+        label: label,
+        data: history.map(item => {
+          const value = item[sensorKey];
+          return typeof value === 'number' && !isNaN(value) ? value : null;
+        }),
+        borderColor: color,
+        backgroundColor: color.replace('rgb', 'rgba').replace(')', ', 0.2)'),
+        tension: 0.1,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        borderWidth: 2,
+        spanGaps: true // Bu null değerlerde çizgiyi devam ettirir
       }
     ]
-  };
+  });
 
-  const chartOptions = {
+  // Sensör grafik konfigürasyonları
+  const sensorConfigs = [
+    {
+      key: 'dissolved_oxygen' as keyof HistoryData,
+      label: 'Çözünmüş Oksijen (mg/L)',
+      color: 'rgb(75, 192, 192)',
+      range: { min: 0, max: 15 }
+    },
+    {
+      key: 'pH' as keyof HistoryData,
+      label: 'pH Değeri',
+      color: 'rgb(255, 99, 132)',
+      range: { min: 4, max: 10 }
+    },
+    {
+      key: 'conductivity' as keyof HistoryData,
+      label: 'İletkenlik (µS/cm)',
+      color: 'rgb(255, 159, 64)',
+      range: { min: 0, max: 2500 }
+    },
+    {
+      key: 'water_temp' as keyof HistoryData,
+      label: 'Su Sıcaklığı (°C)',
+      color: 'rgb(54, 162, 235)',
+      range: { min: 0, max: 50 }
+    },
+    {
+      key: 'air_temp' as keyof HistoryData,
+      label: 'Hava Sıcaklığı (°C)',
+      color: 'rgb(255, 205, 86)',
+      range: { min: 0, max: 50 }
+    },
+    {
+      key: 'air_humidity' as keyof HistoryData,
+      label: 'Hava Nemi (%)',
+      color: 'rgb(153, 102, 255)',
+      range: { min: 0, max: 100 }
+    }
+  ];
+
+  // Her sensör için özel grafik seçenekleri
+  const createChartOptions = (title: string, min: number, max: number, unit: string) => ({
     responsive: true,
     maintainAspectRatio: false,
     interaction: {
@@ -282,17 +303,15 @@ const App: React.FC = () => {
     },
     plugins: {
       legend: {
-        position: 'top' as const,
-        labels: {
-          boxWidth: 12,
-          font: {
-            size: 11
-          }
-        }
+        display: false // Tek veri seti olduğu için legend'i gizle
       },
       title: {
         display: true,
-        text: 'Sensör Değerleri Geçmişi'
+        text: title,
+        font: {
+          size: 14,
+          weight: 'bold' as const
+        }
       },
       tooltip: {
         mode: 'index' as const,
@@ -302,33 +321,11 @@ const App: React.FC = () => {
             return `Zaman: ${context[0].label}`;
           },
           label: function(context: any) {
-            let label = context.dataset.label || '';
-            if (label) {
-              label += ': ';
+            const value = context.parsed.y;
+            if (value !== null && value !== undefined) {
+              return `${title}: ${value.toFixed(2)} ${unit}`;
             }
-            if (context.parsed.y !== null) {
-              label += context.parsed.y.toFixed(2);
-            }
-            return label;
-          },
-          afterBody: function(context: any) {
-            if (context.length > 0) {
-              const dataIndex = context[0].dataIndex;
-              const historyItem = history[dataIndex];
-              if (historyItem) {
-                return [
-                  '',
-                  '--- TÜM DEĞERLER ---',
-                  `Çözünmüş O₂: ${historyItem.dissolved_o2.toFixed(2)} mg/L`,
-                  `pH: ${historyItem.pH.toFixed(2)}`,
-                  `İletkenlik: ${historyItem.conductivity.toFixed(2)} µS/cm`,
-                  `Su Sıcaklığı: ${historyItem.water_temp.toFixed(2)} °C`,
-                  `Hava Sıcaklığı: ${historyItem.air_temp.toFixed(2)} °C`,
-                  `Hava Nemi: ${historyItem.air_humidity.toFixed(2)} %`
-                ];
-              }
-            }
-            return [];
+            return `${title}: Veri yok`;
           }
         }
       }
@@ -336,17 +333,30 @@ const App: React.FC = () => {
     scales: {
       y: {
         beginAtZero: false,
+        min: min,
+        max: max,
         grid: {
           color: 'rgba(0,0,0,0.1)'
+        },
+        ticks: {
+          callback: function(value: any) {
+            return value.toFixed(1) + (unit ? ' ' + unit : '');
+          }
         }
       },
       x: {
         grid: {
           color: 'rgba(0,0,0,0.1)'
+        },
+        ticks: {
+          maxTicksLimit: 10,
+          font: {
+            size: 10
+          }
         }
       }
     }
-  };
+  });
 
   if (loading && !sensorData) {
     return (
@@ -360,37 +370,61 @@ const App: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: { xs: 1, sm: 2 }, mb: 4, px: { xs: 1, sm: 3 } }}>
-      {/* Başlık */}
-      <Paper elevation={3} sx={{ 
-        p: { xs: 2, sm: 3 }, 
-        mb: { xs: 2, sm: 3 }, 
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+    <Box sx={{ 
+      minHeight: '100vh', 
+      backgroundColor: '#f8fafc',
+      pb: 4
+    }}>
+      {/* Modern Header */}
+      <Box sx={{ 
+        background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+        color: 'white',
+        py: { xs: 4, sm: 6 },
+        mb: 4,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
       }}>
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          sx={{ 
-            color: 'white', 
-            textAlign: 'center', 
-            fontWeight: 'bold',
-            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' }
-          }}
-        >
-          🌾 Ziraat Sensör İzleme Sistemi
-        </Typography>
-        <Typography 
-          variant="subtitle1" 
-          sx={{ 
-            color: 'white', 
-            textAlign: 'center', 
-            mt: 1,
-            fontSize: { xs: '0.9rem', sm: '1rem' }
-          }}
-        >
-          ESP NodeMCU Anlık Sensör Verileri
-        </Typography>
-      </Paper>
+        <Container maxWidth="lg">
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography 
+              variant="h3" 
+              component="h1" 
+              sx={{ 
+                fontWeight: 800,
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+                mb: 2,
+                textShadow: '0 2px 8px rgba(0,0,0,0.2)'
+              }}
+            >
+              🌱 Tarım Sensör İzleme
+            </Typography>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                opacity: 0.9,
+                fontSize: { xs: '1rem', sm: '1.25rem' },
+                fontWeight: 400,
+                mb: 2
+              }}
+            >
+              Gerçek Zamanlı Çevresel Monitöring
+            </Typography>
+            
+            {lastUpdate && (
+              <Chip 
+                label={`Son güncelleme: ${lastUpdate.toLocaleTimeString('tr-TR')}`}
+                sx={{
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  color: 'white',
+                  fontWeight: 500,
+                  backdropFilter: 'blur(10px)'
+                }}
+              />
+            )}
+          </Box>
+        </Container>
+      </Box>
+
+      <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
 
       {/* Hata Mesajı */}
       {error && (
@@ -400,42 +434,96 @@ const App: React.FC = () => {
       )}
 
       {/* Motor Kontrol */}
-      <Paper elevation={2} sx={{ p: { xs: 2, sm: 3 }, mb: { xs: 2, sm: 3 } }}>
-        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
-          🔧 Motor Kontrolü
-        </Typography>
-        <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2} alignItems="center">
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          p: { xs: 3, sm: 4 }, 
+          mb: { xs: 3, sm: 4 },
+          borderRadius: 3,
+          backgroundColor: 'white',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+          border: '1px solid #e2e8f0'
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ 
+            width: 48, 
+            height: 48, 
+            borderRadius: '12px',
+            backgroundColor: '#f1f5f9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mr: 2
+          }}>
+            <Typography sx={{ fontSize: '1.5rem' }}>🔧</Typography>
+          </Box>
+          <Typography variant="h5" sx={{ fontWeight: 600, color: '#1e293b' }}>
+            Motor Kontrolü
+          </Typography>
+        </Box>
+        
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' }, 
+          gap: 2, 
+          alignItems: 'center',
+          mb: 3
+        }}>
           <Button
             variant="contained"
-            color="success"
             startIcon={<PlayArrow />}
             onClick={() => handleMotorControl('start')}
             disabled={motorLoading || motorStatus.isRunning}
             fullWidth={window.innerWidth < 600}
-            sx={{ minWidth: { sm: 120 } }}
+            sx={{ 
+              minWidth: { sm: 140 },
+              py: 1.5,
+              borderRadius: 2,
+              backgroundColor: '#10b981',
+              '&:hover': { backgroundColor: '#059669' },
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)',
+              textTransform: 'none',
+              fontWeight: 600
+            }}
           >
             {motorLoading ? <CircularProgress size={20} color="inherit" /> : 'Başlat'}
           </Button>
           <Button
             variant="contained"
-            color="error"
             startIcon={<Stop />}
             onClick={() => handleMotorControl('stop')}
             disabled={motorLoading || !motorStatus.isRunning}
             fullWidth={window.innerWidth < 600}
-            sx={{ minWidth: { sm: 120 } }}
+            sx={{ 
+              minWidth: { sm: 140 },
+              py: 1.5,
+              borderRadius: 2,
+              backgroundColor: '#ef4444',
+              '&:hover': { backgroundColor: '#dc2626' },
+              boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
+              textTransform: 'none',
+              fontWeight: 600
+            }}
           >
             {motorLoading ? <CircularProgress size={20} color="inherit" /> : 'Durdur'}
           </Button>
           <Chip
             icon={<Settings />}
             label={motorStatus.isRunning ? 'Motor Çalışıyor' : 'Motor Durdu'}
-            color={motorStatus.isRunning ? 'success' : 'default'}
-            variant={motorStatus.isRunning ? 'filled' : 'outlined'}
+            sx={{
+              backgroundColor: motorStatus.isRunning ? '#dcfce7' : '#f1f5f9',
+              color: motorStatus.isRunning ? '#166534' : '#64748b',
+              border: motorStatus.isRunning ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
+              fontWeight: 500,
+              px: 2,
+              py: 1
+            }}
           />
         </Box>
+        
         {motorStatus.timestamp && (
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          <Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.875rem' }}>
             Son güncelleme: {new Date(motorStatus.timestamp).toLocaleString('tr-TR')}
           </Typography>
         )}
@@ -494,83 +582,191 @@ const App: React.FC = () => {
 
       {/* Sensör Kartları */}
       {sensorData && (
-        <Box 
-          display="grid" 
-          gridTemplateColumns={{ 
-            xs: '1fr',
-            sm: 'repeat(2, 1fr)', 
-            md: 'repeat(3, 1fr)',
-            lg: 'repeat(3, 1fr)'
-          }}
-          gap={{ xs: 2, sm: 3 }}
-          sx={{ mb: { xs: 3, sm: 4 } }}
-        >
-          {Object.entries(sensorData.values).map(([key, value]) => (
-            <Card 
-              elevation={3} 
-              key={key} 
-              sx={{ 
-                height: '100%', 
-                transition: 'transform 0.2s', 
-                '&:hover': { transform: 'scale(1.02)' }
-              }}
-            >
-              <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
-                <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                  {getSensorIcon(key)}
+        <Box sx={{ mb: 4 }}>
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              fontWeight: 600, 
+              color: '#1e293b', 
+              mb: 3,
+              textAlign: 'center'
+            }}
+          >
+            📊 Anlık Sensör Değerleri
+          </Typography>
+          <Box 
+            display="grid" 
+            gridTemplateColumns={{ 
+              xs: '1fr',
+              sm: 'repeat(2, 1fr)', 
+              md: 'repeat(3, 1fr)',
+              lg: 'repeat(3, 1fr)'
+            }}
+            gap={{ xs: 2, sm: 3 }}
+          >
+            {Object.entries(sensorData.values).map(([key, value]) => (
+              <Card 
+                elevation={0} 
+                key={key} 
+                sx={{ 
+                  height: '100%', 
+                  borderRadius: 3,
+                  backgroundColor: 'white',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                  border: '1px solid #e2e8f0',
+                  transition: 'all 0.3s ease',
+                  '&:hover': { 
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.12)'
+                  }
+                }}
+              >
+                <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+                  <Box display="flex" alignItems="center" mb={3}>
+                    <Box sx={{ 
+                      width: 48, 
+                      height: 48, 
+                      borderRadius: '12px',
+                      backgroundColor: '#f0f9ff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mr: 2,
+                      border: '1px solid #e0f2fe'
+                    }}>
+                      {getSensorIcon(key)}
+                    </Box>
+                    <Box>
+                      <Typography 
+                        variant="h6" 
+                        sx={{ 
+                          fontWeight: 600, 
+                          color: '#1e293b',
+                          fontSize: { xs: '1rem', sm: '1.1rem' }
+                        }}
+                      >
+                        {getSensorName(key)}
+                      </Typography>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: '#64748b',
+                          fontSize: '0.75rem'
+                        }}
+                      >
+                        Anlık değer
+                      </Typography>
+                    </Box>
+                  </Box>
+                  
                   <Typography 
-                    variant="h5" 
-                    component="div" 
-                    fontWeight="bold" 
-                    color="primary.main"
-                    sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}
+                    variant="h4" 
+                    sx={{ 
+                      fontWeight: 700, 
+                      color: '#0f172a',
+                      fontSize: { xs: '1.75rem', sm: '2rem' },
+                      mb: 1
+                    }}
                   >
                     {typeof value === 'number' ? value.toFixed(2) : value}
                     <Typography 
-                      variant="caption" 
                       component="span" 
-                      sx={{ ml: 0.5, fontSize: { xs: '0.7rem', sm: '0.8rem' } }}
+                      sx={{ 
+                        ml: 1, 
+                        fontSize: { xs: '0.875rem', sm: '1rem' },
+                        color: '#64748b',
+                        fontWeight: 500
+                      }}
                     >
                       {getSensorUnit(key)}
                     </Typography>
                   </Typography>
-                </Box>
-                <Typography 
-                  variant="h6" 
-                  component="div" 
-                  gutterBottom
-                  sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
-                >
-                  {getSensorName(key)}
-                </Typography>
-                <Divider />
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Anlık değer
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          ))}
+                  
+                  <Box sx={{ 
+                    height: 6, 
+                    backgroundColor: '#f1f5f9',
+                    borderRadius: 3,
+                    overflow: 'hidden'
+                  }}>
+                    <Box sx={{ 
+                      height: '100%',
+                      backgroundColor: '#3b82f6',
+                      borderRadius: 3,
+                      width: `${Math.min(((value as number) / 100) * 100, 100)}%`,
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
         </Box>
       )}
 
-      {/* Grafik */}
+      {/* Grafikler */}
       {history.length > 1 && (
-        <Paper elevation={3} sx={{ p: { xs: 2, sm: 3 } }}>
-          <Typography 
-            variant="h5" 
-            gutterBottom
-            sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}
-          >
-            📈 Sensör Değerleri Geçmişi
-          </Typography>
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            p: { xs: 3, sm: 4 },
+            borderRadius: 3,
+            backgroundColor: 'white',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            border: '1px solid #e2e8f0'
+          }}
+        >
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 700, 
+                color: '#1e293b',
+                fontSize: { xs: '1.5rem', sm: '2rem' },
+                mb: 1
+              }}
+            >
+              📈 Sensör Değerleri Geçmişi
+            </Typography>
+            <Typography 
+              variant="body1" 
+              sx={{ 
+                color: '#64748b',
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }}
+            >
+              Son 20 ölçümün trend analizi
+            </Typography>
+          </Box>
           <Box sx={{ 
-            width: '100%', 
-            height: { xs: 300, sm: 400, md: 500 },
-            position: 'relative'
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+            gap: 2,
+            mt: 2
           }}>
-            <Line data={chartData} options={chartOptions} />
+            {sensorConfigs.map((config, index) => (
+              <Box key={config.key} sx={{ 
+                backgroundColor: 'white',
+                borderRadius: 2,
+                p: 2,
+                boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+                border: '1px solid #f1f5f9',
+                height: { xs: 280, sm: 320, md: 380 },
+                position: 'relative'
+              }}>
+                <Line 
+                  data={createChartData(config.key, config.label, config.color)} 
+                  options={createChartOptions(
+                    config.label,
+                    config.range.min,
+                    config.range.max,
+                    config.key === 'pH' ? '' : 
+                    config.key === 'conductivity' ? 'µS/cm' :
+                    config.key === 'dissolved_oxygen' ? 'mg/L' :
+                    config.key === 'air_humidity' ? '%' : '°C'
+                  )}
+                />
+              </Box>
+            ))}
           </Box>
         </Paper>
       )}
@@ -590,7 +786,8 @@ const App: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Container>
+      </Container>
+    </Box>
   );
 };
 
