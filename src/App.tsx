@@ -316,11 +316,66 @@ const App: React.FC = () => {
     }
   };
 
+  const formatSensorValue = (value: number, type: string) => {
+    if (value === -1) {
+      return "Hata";
+    }
+    
+    switch (type) {
+      case 'dissolved_oxygen':
+        return `${value.toFixed(2)} mg/L`;
+      case 'ph':
+        return value.toFixed(2);
+      case 'conductivity':
+        return `${Math.round(value)} µS/cm`;
+      case 'water_temp':
+      case 'air_temp':
+        return `${value.toFixed(1)} °C`;
+      case 'air_humidity':
+        return `${value.toFixed(1)} %`;
+      default:
+        return value.toString();
+    }
+  };
+
+  const getSensorColor = (value: number, type: string) => {
+    if (value === -1) {
+      return '#ef4444'; // Kırmızı - hata durumu
+    }
+    
+    // Normal değer renkleri
+    switch (type) {
+      case 'dissolved_oxygen': return '#3b82f6';
+      case 'ph': return '#8b5cf6';
+      case 'conductivity': return '#f59e0b';
+      case 'water_temp': return '#06b6d4';
+      case 'air_temp': return '#ef4444';
+      case 'air_humidity': return '#10b981';
+      default: return '#6b7280';
+    }
+  };
+
+  // ESP bağlantı durumunu kontrol et
+  const isESPConnected = () => {
+    if (!sensorData) return false;
+    
+    // Device field'ı var mı ve ESP8266 içeriyor mu?
+    if (!sensorData.device || !sensorData.device.includes('ESP8266')) return false;
+    
+    // Son 10 saniye içinde veri gelmiş mi?
+    const now = new Date().getTime();
+    const dataTime = new Date(sensorData.timestamp).getTime();
+    const timeDiff = now - dataTime;
+    
+    return timeDiff < 10000; // 10 saniye
+  };
+
   const getWifiStrength = (rssi: number) => {
     if (rssi > -50) return { strength: 'Mükemmel', color: 'success' as const };
-    if (rssi > -60) return { strength: 'İyi', color: 'primary' as const };
+    if (rssi > -60) return { strength: 'İyi', color: 'success' as const };
     if (rssi > -70) return { strength: 'Orta', color: 'warning' as const };
-    return { strength: 'Zayıf', color: 'error' as const };
+    if (rssi > -80) return { strength: 'Zayıf', color: 'warning' as const };
+    return { strength: 'Çok Zayıf', color: 'error' as const };
   };
 
   // Her sensör için ayrı grafik verisi
@@ -500,17 +555,32 @@ const App: React.FC = () => {
               Gerçek Zamanlı Çevresel Monitöring
             </Typography>
             
-            {lastUpdate && (
+            {/* ESP Bağlantı Durumu */}
+            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Chip 
-                label={`Son güncelleme: ${lastUpdate.toLocaleTimeString('tr-TR')}`}
+                icon={<DeviceHub />}
+                label={`ESP8266: ${isESPConnected() ? 'Bağlı' : 'Bağlı Değil'}`}
                 sx={{
-                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  backgroundColor: isESPConnected() ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
                   color: 'white',
                   fontWeight: 500,
-                  backdropFilter: 'blur(10px)'
+                  backdropFilter: 'blur(10px)',
+                  border: isESPConnected() ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
                 }}
               />
-            )}
+              
+              {lastUpdate && (
+                <Chip 
+                  label={`Son güncelleme: ${lastUpdate.toLocaleTimeString('tr-TR')}`}
+                  sx={{
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    fontWeight: 500,
+                    backdropFilter: 'blur(10px)'
+                  }}
+                />
+              )}
+            </Box>
           </Box>
         </Container>
       </Box>
@@ -759,18 +829,7 @@ const App: React.FC = () => {
                       mb: 1
                     }}
                   >
-                    {typeof value === 'number' ? value.toFixed(2) : value}
-                    <Typography 
-                      component="span" 
-                      sx={{ 
-                        ml: 1, 
-                        fontSize: { xs: '0.875rem', sm: '1rem' },
-                        color: '#64748b',
-                        fontWeight: 500
-                      }}
-                    >
-                      {getSensorUnit(key)}
-                    </Typography>
+                    {formatSensorValue(value, key)}
                   </Typography>
                   
                   <Box sx={{ 
@@ -781,7 +840,7 @@ const App: React.FC = () => {
                   }}>
                     <Box sx={{ 
                       height: '100%',
-                      backgroundColor: '#3b82f6',
+                      backgroundColor: getSensorColor(value, key),
                       borderRadius: 3,
                       width: `${Math.min(((value as number) / 100) * 100, 100)}%`,
                       transition: 'width 0.3s ease'
@@ -986,22 +1045,22 @@ const App: React.FC = () => {
                       {row.time}
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 500 }}>
-                      {(row.dissolved_oxygen || 0).toFixed(2)} mg/L
+                      {formatSensorValue(row.dissolved_oxygen, 'dissolved_oxygen')}
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 500 }}>
-                      {(row.ph || 0).toFixed(2)}
+                      {formatSensorValue(row.ph, 'ph')}
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 500 }}>
-                      {(row.conductivity || 0).toFixed(0)} µS/cm
+                      {formatSensorValue(row.conductivity, 'conductivity')}
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 500 }}>
-                      {(row.water_temp || 0).toFixed(1)} °C
+                      {formatSensorValue(row.water_temp, 'water_temp')}
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 500 }}>
-                      {(row.air_temp || 0).toFixed(1)} °C
+                      {formatSensorValue(row.air_temp, 'air_temp')}
                     </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 500 }}>
-                      {(row.air_humidity || 0).toFixed(1)} %
+                      {formatSensorValue(row.air_humidity, 'air_humidity')}
                     </TableCell>
                   </TableRow>
                 ))}
