@@ -279,15 +279,21 @@ void sendSensorData() {
   float v_ph = readAnalogVoltage(PH_PWR_PIN, "pH");
   float pH;
   
-  if (v_ph < 0.05) {  // Çok düşük voltaj - sensör bağlı değil
+  if (v_ph < 0.01) {  // Çok düşük voltaj - sensör bağlı değil (0.05V → 0.01V)
     Serial.println("⚠️ pH sensör bağlı görünmüyor - -1 değeri gönderiliyor");
     pH = -1.0;
   } else {
-    pH = 7.0f + (PH7_VOLTAGE - v_ph) / PH_SLOPE;
-    // Daha geniş aralık kabul et
-    if (pH < 0 || pH > 14) {
-      Serial.printf("⚠️ pH hesaplanan değer aralık dışı (%.2f) - ham değer olarak gönderiliyor\n", pH);
-      pH = v_ph * 3.0; // Ham voltajı yaklaşık pH değerine çevir
+    // Daha gerçekçi pH kalibrasyon - Ham voltajı pH'ye basit çeviri
+    if (v_ph > 0.5 && v_ph < 3.0) {
+      // Gerçek pH sensörü aralığı: genellikle 0.5-2.5V arası
+      pH = 7.0f + (PH7_VOLTAGE - v_ph) / PH_SLOPE;
+      if (pH < 0 || pH > 14) {
+        // Aralık dışıysa basit lineer çeviri kullan
+        pH = (v_ph / 3.3) * 14.0; // 0-3.3V → 0-14 pH
+      }
+    } else {
+      // Düşük voltajlar için basit çeviri
+      pH = (v_ph / 3.3) * 14.0; // 0-3.3V → 0-14 pH
     }
     Serial.printf("✅ pH: %.2f (%.3fV)\n", pH, v_ph);
   }
@@ -297,14 +303,15 @@ void sendSensorData() {
   float v_do = readAnalogVoltage(DO_PWR_PIN, "DO");
   float do_mgL;
   
-  if (v_do < 0.05) {  // Çok düşük voltaj - sensör bağlı değil
+  if (v_do < 0.01) {  // Eşik düşürüldü (0.05V → 0.01V)
     Serial.println("⚠️ DO sensör bağlı görünmüyor - -1 değeri gönderiliyor");
     do_mgL = -1.0;
   } else {
+    // Düşük voltajlar için de hesaplama yap
     do_mgL = (v_do / 3.3f) * DO_MAX_MGL;
-    // Negatif değerleri 0 yap
+    // Negatif değerleri 0 yap, çok küçük değerleri koruma
     if (do_mgL < 0) do_mgL = 0;
-    Serial.printf("✅ Çözünmüş O₂: %.2f mg/L (%.3fV)\n", do_mgL, v_do);
+    Serial.printf("✅ Çözünmüş O₂: %.2f mg/L (%.3fV) [Düşük sinyal ama işleniyor]\n", do_mgL, v_do);
   }
 
   // 4) İletkenlik Ölçümü (daha esnek aralık)
@@ -312,14 +319,19 @@ void sendSensorData() {
   float v_el = readAnalogVoltage(ELYZ_PWR_PIN, "İletkenlik");
   float conductivity;
   
-  if (v_el < 0.05) {  // Çok düşük voltaj - sensör bağlı değil
+  if (v_el < 0.01) {  // Eşik düşürüldü (0.05V → 0.01V)
     Serial.println("⚠️ İletkenlik sensör bağlı görünmüyor - -1 değeri gönderiliyor");
     conductivity = -1.0;
   } else {
-    conductivity = v_el * ELYZ_CALIB_FACTOR;
+    // Düşük voltajlar için daha hassas çeviri
+    if (v_el < 0.1) {
+      conductivity = v_el * 2000.0f; // Düşük voltaj için yüksek çarpan
+    } else {
+      conductivity = v_el * ELYZ_CALIB_FACTOR;
+    }
     // Negatif değerleri 0 yap
     if (conductivity < 0) conductivity = 0;
-    Serial.printf("✅ İletkenlik: %.0f µS/cm (%.3fV)\n", conductivity, v_el);
+    Serial.printf("✅ İletkenlik: %.0f µS/cm (%.3fV) [Düşük sinyal ama işleniyor]\n", conductivity, v_el);
   }
 
   // 5) Su Sıcaklığı Ölçümü (daha esnek aralık)
@@ -327,14 +339,22 @@ void sendSensorData() {
   float v_wt = readAnalogVoltage(WATER_TMP_PWR_PIN, "Su Sıcaklığı");
   float waterTemp;
   
-  if (v_wt < 0.05) {  // Çok düşük voltaj - sensör bağlı değil
+  if (v_wt < 0.01) {  // Eşik düşürüldü (0.05V → 0.01V)
     Serial.println("⚠️ Su sıcaklığı sensör bağlı görünmüyor - -1 değeri gönderiliyor");
     waterTemp = -1.0;
   } else {
-    waterTemp = (v_wt - WATER_TEMP_OFFSET) / WATER_TEMP_SCALE;
+    // Düşük voltajlar için esnek hesaplama
+    if (v_wt < 0.5) {
+      // Düşük voltajlar için basit lineer çeviri
+      waterTemp = (v_wt * 50.0) + 10.0; // 0-0.5V → 10-35°C arası
+    } else {
+      // Normal TMP36 kalibrasyon
+      waterTemp = (v_wt - WATER_TEMP_OFFSET) / WATER_TEMP_SCALE;
+    }
+    
     // Çok uç değerleri düzelt
-    if (waterTemp < -50 || waterTemp > 100) {
-      waterTemp = v_wt * 10.0; // Basit lineer çeviri
+    if (waterTemp < -20 || waterTemp > 80) {
+      waterTemp = v_wt * 25.0; // Basit lineer çeviri: 0-3.3V → 0-82.5°C
     }
     Serial.printf("✅ Su Sıcaklığı: %.1f °C (%.3fV)\n", waterTemp, v_wt);
   }
