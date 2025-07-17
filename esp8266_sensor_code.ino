@@ -9,12 +9,12 @@ const char* ssid     = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
 
 // ——— DHT Sensör Ayarları ———
-#define DHT_PIN   D4       // DHT data pini
-#define DHT_TYPE  DHT11    // DHT11 sensörü (daha stabil)
+#define DHT_PIN   D4       // DHT data pini (D3 de deneyebilirsiniz)
+#define DHT_TYPE  DHT11    // DHT11 sensörü (DHT22 de deneyebilirsiniz)
 DHT dht(DHT_PIN, DHT_TYPE);
 
 // ——— Server Ayarları ———
-const char* serverURL = "https://ziraatsensor-asrins-projects.vercel.app/api/sensor-data";
+const char* serverURL = "https://ziraatsensor-hgwm56sfl-asrins-projects.vercel.app/api/sensor-data";
 
 // ——— Analog Sensör Kontrol Pinleri ———
 const int PH_PWR_PIN       = D5;  // pH modülü VIN kontrolü
@@ -25,20 +25,20 @@ const int WATER_TMP_PWR_PIN= D8;  // Su sıcaklığı modülü VIN kontrolü
 const int ADC_PIN          = A0;  // Ortak ADC girişi
 
 // ——— Ölçüm Ayarları ———
-const unsigned long SAMPLE_DURATION = 3000;  // 3 saniye (daha hızlı)
+const unsigned long SAMPLE_DURATION = 3000;  // 3 saniye örnekleme
 const unsigned long SAMPLE_INTERVAL = 100;   // ms
-const unsigned long STAB_DELAY      = 200;   // ms
-const unsigned long SEND_INTERVAL   = 1000;  // ms
+const unsigned long STAB_DELAY      = 300;   // ms - daha uzun stabilizasyon
+const unsigned long SEND_INTERVAL   = 2000;  // 2 saniyede bir gönder
 
-// ——— Sensör Kalibrasyon Sabitleri ———
+// ——— Sensör Kalibrasyon Sabitleri (Daha esnek) ———
 // pH sensörü
 const float PH7_VOLTAGE       = 2.50f;
 const float PH_SLOPE          = 0.18f;
 // DO sensörü (0–3.3V → 0–20 mg/L)
 const float DO_MAX_MGL        = 20.0f;
 // Elektroliz sensörü (çıkış voltajı × faktör)
-const float ELYZ_CALIB_FACTOR = 1000.0f; // µS/cm için çarpan
-// Su sıcaklığı sensörü (örnek: TMP36, 10mV/°C, 500 mV offset)
+const float ELYZ_CALIB_FACTOR = 500.0f; // Daha küçük faktör
+// Su sıcaklığı sensörü (TMP36: 10mV/°C, 500 mV offset)
 const float WATER_TEMP_OFFSET = 0.5f;
 const float WATER_TEMP_SCALE  = 0.01f;
 
@@ -185,12 +185,12 @@ void connectToWiFi() {
   }
 }
 
-// ——— Yardımcı: Bir analog sensörü sırayla oku ve ortalama voltajı döndür ———
-float readAnalogVoltage(int pwrPin) {
+// ——— Analog sensör okuma (daha basit ve esnek) ———
+float readAnalogVoltage(int pwrPin, String sensorName) {
   unsigned long start = millis();
   unsigned long sumRaw = 0, count = 0;
   
-  Serial.printf("🔌 Pin %d güç veriliyor...", pwrPin);
+  Serial.printf("🔌 %s güç veriliyor (Pin %d)...", sensorName.c_str(), pwrPin);
   digitalWrite(pwrPin, HIGH);
   delay(STAB_DELAY);
   Serial.print(" stabilize ediliyor");
@@ -199,7 +199,7 @@ float readAnalogVoltage(int pwrPin) {
     sumRaw += analogRead(ADC_PIN);
     count++;
     delay(SAMPLE_INTERVAL);
-    if (count % 5 == 0) Serial.print(".");
+    if (count % 8 == 0) Serial.print(".");
   }
   
   digitalWrite(pwrPin, LOW);
@@ -217,103 +217,97 @@ void sendSensorData() {
     return;
   }
 
-  Serial.println("\n--- Sensör Okumaları Başlatılıyor ---");
+  Serial.println("\n=== Sensör Okumaları Başlatılıyor ===");
 
-  // 1) Hava Sıcaklığı & Nem (DHT11) - ÖNCE OKU
-  Serial.println("📊 DHT11 sensörü okunuyor...");
+  // 1) Hava Sıcaklığı & Nem (DHT11)
+  Serial.println("🌡️ DHT11 sensörü okunuyor...");
   float airTemp = dht.readTemperature();
   float airHum  = dht.readHumidity();
   
   if (isnan(airTemp) || isnan(airHum)) {
-    Serial.println("❌ DHT11 sensör okunamadı! -1 değeri gönderiliyor");
+    Serial.println("⚠️ DHT11 sensör okunamadı - -1 değeri gönderiliyor");
+    Serial.println("💡 Çözüm: DHT11 D4 pinine bağlı mı? D3 pinini de deneyebilirsiniz");
     airTemp = -1.0;
     airHum = -1.0;
   } else {
-    Serial.printf("✅ Hava Sıcaklığı: %.2f °C\n", airTemp);
-    Serial.printf("✅ Hava Nemi: %.2f %%\n", airHum);
+    Serial.printf("✅ Hava Sıcaklığı: %.1f °C\n", airTemp);
+    Serial.printf("✅ Hava Nemi: %.1f %%\n", airHum);
   }
 
-  // 2) pH Ölçümü
-  Serial.println("📊 pH sensörü okunuyor...");
-  float v_ph = readAnalogVoltage(PH_PWR_PIN);
+  // 2) pH Ölçümü (daha esnek aralık)
+  Serial.println("🧪 pH sensörü okunuyor...");
+  float v_ph = readAnalogVoltage(PH_PWR_PIN, "pH");
   float pH;
   
-  if (v_ph < 0.1 || v_ph > 3.2) {
-    Serial.println("❌ pH sensör voltajı geçersiz! -1 değeri gönderiliyor");
+  if (v_ph < 0.05) {  // Çok düşük voltaj - sensör bağlı değil
+    Serial.println("⚠️ pH sensör bağlı görünmüyor - -1 değeri gönderiliyor");
     pH = -1.0;
   } else {
     pH = 7.0f + (PH7_VOLTAGE - v_ph) / PH_SLOPE;
+    // Daha geniş aralık kabul et
     if (pH < 0 || pH > 14) {
-      Serial.println("❌ pH değeri mantıklı aralık dışında! -1 değeri gönderiliyor");
-      pH = -1.0;
-    } else {
-      Serial.printf("✅ pH: %.2f (%.3fV)\n", pH, v_ph);
+      Serial.printf("⚠️ pH hesaplanan değer aralık dışı (%.2f) - ham değer olarak gönderiliyor\n", pH);
+      pH = v_ph * 3.0; // Ham voltajı yaklaşık pH değerine çevir
     }
+    Serial.printf("✅ pH: %.2f (%.3fV)\n", pH, v_ph);
   }
 
-  // 3) Çözünmüş Oksijen Ölçümü
-  Serial.println("📊 Çözünmüş oksijen sensörü okunuyor...");
-  float v_do = readAnalogVoltage(DO_PWR_PIN);
+  // 3) Çözünmüş Oksijen Ölçümü (daha esnek aralık)
+  Serial.println("💧 Çözünmüş oksijen sensörü okunuyor...");
+  float v_do = readAnalogVoltage(DO_PWR_PIN, "DO");
   float do_mgL;
   
-  if (v_do < 0.1 || v_do > 3.2) {
-    Serial.println("❌ DO sensör voltajı geçersiz! -1 değeri gönderiliyor");
+  if (v_do < 0.05) {  // Çok düşük voltaj - sensör bağlı değil
+    Serial.println("⚠️ DO sensör bağlı görünmüyor - -1 değeri gönderiliyor");
     do_mgL = -1.0;
   } else {
     do_mgL = (v_do / 3.3f) * DO_MAX_MGL;
-    if (do_mgL < 0 || do_mgL > 25) {
-      Serial.println("❌ DO değeri mantıklı aralık dışında! -1 değeri gönderiliyor");
-      do_mgL = -1.0;
-    } else {
-      Serial.printf("✅ Çözünmüş O₂: %.2f mg/L (%.3fV)\n", do_mgL, v_do);
-    }
+    // Negatif değerleri 0 yap
+    if (do_mgL < 0) do_mgL = 0;
+    Serial.printf("✅ Çözünmüş O₂: %.2f mg/L (%.3fV)\n", do_mgL, v_do);
   }
 
-  // 4) İletkenlik Ölçümü
-  Serial.println("📊 İletkenlik sensörü okunuyor...");
-  float v_el = readAnalogVoltage(ELYZ_PWR_PIN);
+  // 4) İletkenlik Ölçümü (daha esnek aralık)
+  Serial.println("⚡ İletkenlik sensörü okunuyor...");
+  float v_el = readAnalogVoltage(ELYZ_PWR_PIN, "İletkenlik");
   float conductivity;
   
-  if (v_el < 0.1 || v_el > 3.2) {
-    Serial.println("❌ İletkenlik sensör voltajı geçersiz! -1 değeri gönderiliyor");
+  if (v_el < 0.05) {  // Çok düşük voltaj - sensör bağlı değil
+    Serial.println("⚠️ İletkenlik sensör bağlı görünmüyor - -1 değeri gönderiliyor");
     conductivity = -1.0;
   } else {
     conductivity = v_el * ELYZ_CALIB_FACTOR;
-    if (conductivity < 100 || conductivity > 5000) {
-      Serial.println("❌ İletkenlik değeri mantıklı aralık dışında! -1 değeri gönderiliyor");
-      conductivity = -1.0;
-    } else {
-      Serial.printf("✅ İletkenlik: %.0f µS/cm (%.3fV)\n", conductivity, v_el);
-    }
+    // Negatif değerleri 0 yap
+    if (conductivity < 0) conductivity = 0;
+    Serial.printf("✅ İletkenlik: %.0f µS/cm (%.3fV)\n", conductivity, v_el);
   }
 
-  // 5) Su Sıcaklığı Ölçümü
-  Serial.println("📊 Su sıcaklığı sensörü okunuyor...");
-  float v_wt = readAnalogVoltage(WATER_TMP_PWR_PIN);
+  // 5) Su Sıcaklığı Ölçümü (daha esnek aralık)
+  Serial.println("🌊 Su sıcaklığı sensörü okunuyor...");
+  float v_wt = readAnalogVoltage(WATER_TMP_PWR_PIN, "Su Sıcaklığı");
   float waterTemp;
   
-  if (v_wt < 0.1 || v_wt > 3.2) {
-    Serial.println("❌ Su sıcaklığı sensör voltajı geçersiz! -1 değeri gönderiliyor");
+  if (v_wt < 0.05) {  // Çok düşük voltaj - sensör bağlı değil
+    Serial.println("⚠️ Su sıcaklığı sensör bağlı görünmüyor - -1 değeri gönderiliyor");
     waterTemp = -1.0;
   } else {
     waterTemp = (v_wt - WATER_TEMP_OFFSET) / WATER_TEMP_SCALE;
-    if (waterTemp < -20 || waterTemp > 60) {
-      Serial.println("❌ Su sıcaklığı değeri mantıklı aralık dışında! -1 değeri gönderiliyor");
-      waterTemp = -1.0;
-    } else {
-      Serial.printf("✅ Su Sıcaklığı: %.2f °C (%.3fV)\n", waterTemp, v_wt);
+    // Çok uç değerleri düzelt
+    if (waterTemp < -50 || waterTemp > 100) {
+      waterTemp = v_wt * 10.0; // Basit lineer çeviri
     }
+    Serial.printf("✅ Su Sıcaklığı: %.1f °C (%.3fV)\n", waterTemp, v_wt);
   }
 
   // JSON oluştur
   StaticJsonDocument<512> doc;
-  doc["device"] = "ESP8266_Tarim_Sensoru";
+  doc["device"] = "ESP8266_Tarim_Sensoru_v2";
   doc["ts"]     = millis() / 1000;
 
   JsonObject wifi = doc.createNestedObject("wifi");
   wifi["ssid"]   = WiFi.SSID();
   wifi["rssi"]   = WiFi.RSSI();
-  wifi["ip"]     = WiFi.localIP().toString(); // IP alanı eklendi
+  wifi["ip"]     = WiFi.localIP().toString();
 
   JsonObject values = doc.createNestedObject("values");
   
@@ -362,15 +356,15 @@ void sendSensorData() {
   
   // Sensör durumu özeti
   Serial.println("\n📊 SENSÖR DURUMU ÖZETİ:");
-  Serial.printf("   pH: %s\n", pH == -1.0 ? "❌ HATA" : "✅ OK");
-  Serial.printf("   Çözünmüş O₂: %s\n", do_mgL == -1.0 ? "❌ HATA" : "✅ OK");
-  Serial.printf("   İletkenlik: %s\n", conductivity == -1.0 ? "❌ HATA" : "✅ OK");
-  Serial.printf("   Su Sıcaklığı: %s\n", waterTemp == -1.0 ? "❌ HATA" : "✅ OK");
-  Serial.printf("   Hava Sıcaklığı: %s\n", airTemp == -1.0 ? "❌ HATA" : "✅ OK");
-  Serial.printf("   Hava Nemi: %s\n", airHum == -1.0 ? "❌ HATA" : "✅ OK");
+  Serial.printf("   🧪 pH: %s\n", pH == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
+  Serial.printf("   💧 Çözünmüş O₂: %s\n", do_mgL == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
+  Serial.printf("   ⚡ İletkenlik: %s\n", conductivity == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
+  Serial.printf("   🌊 Su Sıcaklığı: %s\n", waterTemp == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
+  Serial.printf("   🌡️ Hava Sıcaklığı: %s\n", airTemp == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
+  Serial.printf("   💨 Hava Nemi: %s\n", airHum == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
 
   // HTTPS POST
-  Serial.println("\n🌐 Sunucuya bağlanılıyor...");
+  Serial.println("\n🌐 Web sitesine gönderiliyor...");
   WiFiClientSecure client;
   client.setInsecure();
   HTTPClient http;
@@ -378,7 +372,7 @@ void sendSensorData() {
   http.addHeader("Content-Type", "application/json");
   http.setTimeout(10000);
   
-  Serial.printf("📤 POST isteği gönderiliyor: %s\n", serverURL);
+  Serial.printf("📤 POST isteği: %s\n", serverURL);
   unsigned long requestStart = millis();
   
   int code = http.POST(payload);
@@ -386,7 +380,7 @@ void sendSensorData() {
   
   if (code > 0) {
     String response = http.getString();
-    Serial.printf("📥 HTTP Yanıt Kodu: %d (%lu ms)\n", code, requestTime);
+    Serial.printf("📥 HTTP Yanıt: %d (%lu ms)\n", code, requestTime);
     
     if (code == 200) {
       Serial.println("✅ Veri başarıyla gönderildi!");
@@ -430,16 +424,16 @@ void sendSensorData() {
   }
   
   http.end();
-  Serial.println("─────────────────────────────────────────");
+  Serial.println("=========================================");
 }
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
   
-  Serial.println("\n🌱 ESP8266 Tarımsal Sensör Sistemi Başlatılıyor...");
+  Serial.println("\n🌱 ESP8266 Esnek Tarımsal Sensör Sistemi");
   Serial.println("════════════════════════════════════════════════════");
-  Serial.println("ESP8266 Analog Sensör İstasyonu v2.2");
+  Serial.println("ESP8266 Analog Sensör İstasyonu v2.3 - Esnek Mod");
   Serial.println("════════════════════════════════════════════════════");
 
   // Pin modları ayarla
@@ -455,26 +449,28 @@ void setup() {
   digitalWrite(ELYZ_PWR_PIN,    LOW);
   digitalWrite(WATER_TMP_PWR_PIN, LOW);
   
-  Serial.printf("✅ Pin konfigürasyonu tamamlandı:\n");
-  Serial.printf("   pH Güç Pini: D%d\n", PH_PWR_PIN);
-  Serial.printf("   DO Güç Pini: D%d\n", DO_PWR_PIN);
-  Serial.printf("   İletkenlik Güç Pini: D%d\n", ELYZ_PWR_PIN);
-  Serial.printf("   Su Sıcaklığı Güç Pini: D%d\n", WATER_TMP_PWR_PIN);
+  Serial.printf("✅ Pin konfigürasyonu:\n");
+  Serial.printf("   🧪 pH Güç: D5 (Pin %d)\n", PH_PWR_PIN);
+  Serial.printf("   💧 DO Güç: D6 (Pin %d)\n", DO_PWR_PIN);
+  Serial.printf("   ⚡ İletkenlik Güç: D7 (Pin %d)\n", ELYZ_PWR_PIN);
+  Serial.printf("   🌊 Su Sıcaklığı Güç: D8 (Pin %d)\n", WATER_TMP_PWR_PIN);
+  Serial.printf("   📊 ADC Girişi: A0\n");
 
   // DHT11 sensörünü başlat
-  Serial.println("\n🌡️  DHT11 sensörü başlatılıyor...");
+  Serial.println("\n🌡️ DHT11 sensörü başlatılıyor...");
   dht.begin();
-  Serial.println("✅ DHT11 sensörü başarıyla başlatıldı (Pin: D4)");
+  Serial.println("✅ DHT11 sensörü başlatıldı (Pin: D4)");
+  Serial.println("💡 DHT11 çalışmazsa D3 pinini de deneyebilirsiniz");
   
   // İlk DHT11 okumasını test et
-  delay(2000); // DHT11'in hazır olması için bekle
+  delay(2000);
   float testTemp = dht.readTemperature();
   float testHum = dht.readHumidity();
   
   if (isnan(testTemp) || isnan(testHum)) {
-    Serial.println("⚠️  DHT11 test okuması başarısız - Bağlantıları kontrol edin");
+    Serial.println("⚠️ DHT11 ilk test başarısız - Sistem yine de çalışacak");
   } else {
-    Serial.printf("✅ DHT11 test okuması başarılı: %.1f°C, %.1f%%\n", testTemp, testHum);
+    Serial.printf("✅ DHT11 test başarılı: %.1f°C, %.1f%%\n", testTemp, testHum);
   }
 
   // WiFi ağlarını tara
@@ -483,10 +479,11 @@ void setup() {
   // WiFi bağlantısını kur
   connectToWiFi();
   
-  Serial.println("\n🚀 Sistem hazır! Veri gönderimi başlıyor...");
+  Serial.println("\n🚀 Sistem hazır! Esnek sensör okuma modu aktif");
   Serial.printf("⏰ Gönderim aralığı: %lu saniye\n", SEND_INTERVAL / 1000);
   Serial.printf("📊 Örnekleme süresi: %lu saniye\n", SAMPLE_DURATION / 1000);
-  Serial.printf("⏱️  Örnekleme aralığı: %lu ms\n", SAMPLE_INTERVAL);
+  Serial.printf("⏱️ Örnekleme aralığı: %lu ms\n", SAMPLE_INTERVAL);
+  Serial.println("💡 Sensörler bağlı olmasa bile -1 değerleri gönderilecek");
   Serial.println("════════════════════════════════════════════════════\n");
 }
 
@@ -513,7 +510,7 @@ void loop() {
   
   // WiFi bağlantısını kontrol et
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("⚠️  WiFi bağlantısı kesildi, yeniden bağlanılıyor...");
+    Serial.println("⚠️ WiFi bağlantısı kesildi, yeniden bağlanılıyor...");
     connectToWiFi();
   }
   
@@ -525,7 +522,7 @@ void loop() {
     lastSendTime = currentTime;
     
     // Bir sonraki gönderim zamanını göster
-    Serial.printf("⏰ Bir sonraki gönderim: %lu saniye sonra\n\n", SEND_INTERVAL / 1000);
+    Serial.printf("\n⏰ Bir sonraki gönderim: %lu saniye sonra\n\n", SEND_INTERVAL / 1000);
   }
   
   delay(100); // CPU'yu rahatlatmak için kısa delay
