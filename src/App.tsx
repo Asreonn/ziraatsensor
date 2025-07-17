@@ -292,18 +292,6 @@ const App: React.FC = () => {
     }
   };
 
-  const getSensorUnit = (type: string) => {
-    switch (type) {
-      case 'dissolved_oxygen': return 'mg/L';
-      case 'ph': return '';
-      case 'conductivity': return 'µS/cm';
-      case 'water_temp': return '°C';
-      case 'air_temp': return '°C';
-      case 'air_humidity': return '%';
-      default: return '';
-    }
-  };
-
   const getSensorName = (type: string) => {
     switch (type) {
       case 'dissolved_oxygen': return 'Çözünmüş Oksijen';
