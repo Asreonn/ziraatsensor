@@ -9,26 +9,27 @@ const char* ssid     = "YOUR_WIFI_SSID";
 const char* password = "YOUR_WIFI_PASSWORD";
 
 // ——— DHT Sensör Ayarları ———
-#define DHT_PIN   D4       // DHT data pini (D3 de deneyebilirsiniz)
-#define DHT_TYPE  DHT11    // DHT11 sensörü (DHT22 de deneyebilirsiniz)
+#define DHT_PIN   D3       // DHT data pini (kullanıcı tablosuna göre D3)
+#define DHT_TYPE  DHT22    // DHT22 / AM2302 
 DHT dht(DHT_PIN, DHT_TYPE);
 
 // ——— Server Ayarları ———
-const char* serverURL = "https://ziraatsensor-hgwm56sfl-asrins-projects.vercel.app/api/sensor-data";
+const char* serverURL = "https://ziraatsensor-4cpbikg9m-asrins-projects.vercel.app/api/sensor-data";
 
-// ——— Analog Sensör Kontrol Pinleri ———
-const int PH_PWR_PIN       = D5;  // pH modülü VIN kontrolü
-const int DO_PWR_PIN       = D6;  // Çözünmüş O₂ modülü VIN kontrolü
-const int ELYZ_PWR_PIN     = D7;  // Elektroliz modülü VIN kontrolü
-const int WATER_TMP_PWR_PIN= D8;  // Su sıcaklığı modülü VIN kontrolü
+// ——— Analog Sensör Kontrol Pinleri (Kullanıcı Tablosuna Göre) ———
+const int PH_PWR_PIN       = D5;  // GPIO14 - pH modülü VIN kontrolü
+const int DO_PWR_PIN       = D6;  // GPIO12 - Çözünmüş O₂ modülü VIN kontrolü  
+const int ELYZ_PWR_PIN     = D7;  // GPIO13 - Elektroliz modülü VIN kontrolü
+const int WATER_TMP_PWR_PIN= D8;  // GPIO15 - Su sıcaklığı modülü VIN kontrolü
 
-const int ADC_PIN          = A0;  // Ortak ADC girişi
+const int ADC_PIN          = A0;  // Ortak ADC girişi - tüm analog sensörler
 
-// ——— Ölçüm Ayarları ———
-const unsigned long SAMPLE_DURATION = 3000;  // 3 saniye örnekleme
-const unsigned long SAMPLE_INTERVAL = 100;   // ms
-const unsigned long STAB_DELAY      = 300;   // ms - daha uzun stabilizasyon
-const unsigned long SEND_INTERVAL   = 2000;  // 2 saniyede bir gönder
+// ——— Ölçüm Ayarları (Daha uzun süreler) ———
+const unsigned long SAMPLE_DURATION = 5000;  // 5 saniye örnekleme (daha uzun)
+const unsigned long SAMPLE_INTERVAL = 150;   // ms
+const unsigned long STAB_DELAY      = 500;   // ms - daha uzun stabilizasyon
+const unsigned long SENSOR_DELAY    = 200;   // ms - sensörler arası bekleme
+const unsigned long SEND_INTERVAL   = 3000;  // 3 saniyede bir gönder
 
 // ——— Sensör Kalibrasyon Sabitleri (Daha esnek) ———
 // pH sensörü
@@ -185,27 +186,66 @@ void connectToWiFi() {
   }
 }
 
-// ——— Analog sensör okuma (daha basit ve esnek) ———
+// ——— Analog sensör okuma (detaylı debug ve uzun stabilizasyon) ———
 float readAnalogVoltage(int pwrPin, String sensorName) {
   unsigned long start = millis();
   unsigned long sumRaw = 0, count = 0;
   
-  Serial.printf("🔌 %s güç veriliyor (Pin %d)...", sensorName.c_str(), pwrPin);
+  // Önceki sensörün etkisini azaltmak için tüm pinleri LOW yap
+  digitalWrite(PH_PWR_PIN, LOW);
+  digitalWrite(DO_PWR_PIN, LOW);
+  digitalWrite(ELYZ_PWR_PIN, LOW);
+  digitalWrite(WATER_TMP_PWR_PIN, LOW);
+  delay(100); // Temizleme gecikmesi
+  
+  Serial.printf("🔌 %s güç veriliyor (Pin %d = GPIO%d)...", 
+                sensorName.c_str(), pwrPin, 
+                pwrPin == D5 ? 14 : pwrPin == D6 ? 12 : pwrPin == D7 ? 13 : 15);
+  
+  // İlk ADC okuması (başlangıç değeri)
+  int initialADC = analogRead(ADC_PIN);
+  Serial.printf(" [Başlangıç ADC: %d]", initialADC);
+  
   digitalWrite(pwrPin, HIGH);
+  Serial.print(" güç veriliyor");
+  
+  // Uzun stabilizasyon bekleme
   delay(STAB_DELAY);
   Serial.print(" stabilize ediliyor");
   
+  // İkinci ADC okuması (stabilizasyon sonrası)
+  int stableADC = analogRead(ADC_PIN);
+  Serial.printf(" [Stabil ADC: %d]", stableADC);
+  
+  // Örnekleme döngüsü
   while (millis() - start < SAMPLE_DURATION) {
-    sumRaw += analogRead(ADC_PIN);
+    int rawValue = analogRead(ADC_PIN);
+    sumRaw += rawValue;
     count++;
     delay(SAMPLE_INTERVAL);
-    if (count % 8 == 0) Serial.print(".");
+    
+    // Her 20 örnekte bir ADC değerini göster
+    if (count % 20 == 0) {
+      Serial.printf(".[ADC:%d]", rawValue);
+    } else if (count % 5 == 0) {
+      Serial.print(".");
+    }
   }
   
   digitalWrite(pwrPin, LOW);
+  
   float avgRaw = float(sumRaw) / float(count);
   float voltage = avgRaw * (3.3f / 1023.0f);
-  Serial.printf(" [%lu örnek, %.3fV]\n", count, voltage);
+  
+  // Son ADC okuması (güç kesildikten sonra)
+  delay(50);
+  int finalADC = analogRead(ADC_PIN);
+  
+  Serial.printf(" [%lu örnek, Ort:%.1f, %.3fV, Son ADC:%d]\n", 
+                count, avgRaw, voltage, finalADC);
+  
+  // Sensörler arası bekleme
+  delay(SENSOR_DELAY);
   
   return voltage;
 }
@@ -219,14 +259,14 @@ void sendSensorData() {
 
   Serial.println("\n=== Sensör Okumaları Başlatılıyor ===");
 
-  // 1) Hava Sıcaklığı & Nem (DHT11)
-  Serial.println("🌡️ DHT11 sensörü okunuyor...");
+  // 1) Hava Sıcaklığı & Nem (DHT22)
+  Serial.println("🌡️ DHT22 sensörü okunuyor...");
   float airTemp = dht.readTemperature();
   float airHum  = dht.readHumidity();
   
   if (isnan(airTemp) || isnan(airHum)) {
-    Serial.println("⚠️ DHT11 sensör okunamadı - -1 değeri gönderiliyor");
-    Serial.println("💡 Çözüm: DHT11 D4 pinine bağlı mı? D3 pinini de deneyebilirsiniz");
+    Serial.println("⚠️ DHT22 sensör okunamadı - -1 değeri gönderiliyor");
+    Serial.println("💡 Çözüm: DHT22 D3 (GPIO0) pinine bağlı mı? 3.3V güç var mı?");
     airTemp = -1.0;
     airHum = -1.0;
   } else {
@@ -301,7 +341,7 @@ void sendSensorData() {
 
   // JSON oluştur
   StaticJsonDocument<512> doc;
-  doc["device"] = "ESP8266_Tarim_Sensoru_v2";
+  doc["device"] = "ESP8266_Sirayli_Analog_v2.4";
   doc["ts"]     = millis() / 1000;
 
   JsonObject wifi = doc.createNestedObject("wifi");
@@ -355,13 +395,13 @@ void sendSensorData() {
   Serial.println(payload);
   
   // Sensör durumu özeti
-  Serial.println("\n📊 SENSÖR DURUMU ÖZETİ:");
-  Serial.printf("   🧪 pH: %s\n", pH == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
-  Serial.printf("   💧 Çözünmüş O₂: %s\n", do_mgL == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
-  Serial.printf("   ⚡ İletkenlik: %s\n", conductivity == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
-  Serial.printf("   🌊 Su Sıcaklığı: %s\n", waterTemp == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
-  Serial.printf("   🌡️ Hava Sıcaklığı: %s\n", airTemp == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
-  Serial.printf("   💨 Hava Nemi: %s\n", airHum == -1.0 ? "❌ Bağlı Değil" : "✅ Çalışıyor");
+  Serial.println("\n📊 SENSÖR DURUMU ÖZETİ (Sıralı A0 Okuma):");
+  Serial.printf("   🧪 pH (D5→A0): %s\n", pH == -1.0 ? "❌ Sinyal Yok" : "✅ Çalışıyor");
+  Serial.printf("   💧 DO (D6→A0): %s\n", do_mgL == -1.0 ? "❌ Sinyal Yok" : "✅ Çalışıyor");
+  Serial.printf("   ⚡ İletkenlik (D7→A0): %s\n", conductivity == -1.0 ? "❌ Sinyal Yok" : "✅ Çalışıyor");
+  Serial.printf("   🌊 Su Sıcak. (D8→A0): %s\n", waterTemp == -1.0 ? "❌ Sinyal Yok" : "✅ Çalışıyor");
+  Serial.printf("   🌡️ Hava Sıcak. (D3): %s\n", airTemp == -1.0 ? "❌ DHT22 Hata" : "✅ DHT22 OK");
+  Serial.printf("   💨 Hava Nemi (D3): %s\n", airHum == -1.0 ? "❌ DHT22 Hata" : "✅ DHT22 OK");
 
   // HTTPS POST
   Serial.println("\n🌐 Web sitesine gönderiliyor...");
@@ -431,13 +471,13 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   
-  Serial.println("\n🌱 ESP8266 Esnek Tarımsal Sensör Sistemi");
+  Serial.println("\n🌱 ESP8266 Sıralı Analog Sensör Sistemi");
   Serial.println("════════════════════════════════════════════════════");
-  Serial.println("ESP8266 Analog Sensör İstasyonu v2.3 - Esnek Mod");
+  Serial.println("ESP8266 Analog Sensör İstasyonu v2.4 - Sıralı Okuma");
   Serial.println("════════════════════════════════════════════════════");
 
   // Pin modları ayarla
-  Serial.println("\n🔧 Analog sensör güç pinleri ayarlanıyor...");
+  Serial.println("\n🔧 Pin konfigürasyonu (Kullanıcı Tablosuna Göre):");
   pinMode(PH_PWR_PIN,      OUTPUT);
   pinMode(DO_PWR_PIN,      OUTPUT);
   pinMode(ELYZ_PWR_PIN,    OUTPUT);
@@ -449,28 +489,44 @@ void setup() {
   digitalWrite(ELYZ_PWR_PIN,    LOW);
   digitalWrite(WATER_TMP_PWR_PIN, LOW);
   
-  Serial.printf("✅ Pin konfigürasyonu:\n");
-  Serial.printf("   🧪 pH Güç: D5 (Pin %d)\n", PH_PWR_PIN);
-  Serial.printf("   💧 DO Güç: D6 (Pin %d)\n", DO_PWR_PIN);
-  Serial.printf("   ⚡ İletkenlik Güç: D7 (Pin %d)\n", ELYZ_PWR_PIN);
-  Serial.printf("   🌊 Su Sıcaklığı Güç: D8 (Pin %d)\n", WATER_TMP_PWR_PIN);
-  Serial.printf("   📊 ADC Girişi: A0\n");
+  Serial.printf("   🧪 pH Güç: D5 (GPIO14) → A0\n");
+  Serial.printf("   💧 DO Güç: D6 (GPIO12) → A0\n");
+  Serial.printf("   ⚡ İletkenlik Güç: D7 (GPIO13) → A0\n");
+  Serial.printf("   🌊 Su Sıcaklığı Güç: D8 (GPIO15) → A0\n");
+  Serial.printf("   📊 ADC Girişi: A0 (Ortak analog giriş)\n");
+  Serial.printf("   🌡️ DHT22: D3 (GPIO0) → DHT data pin\n");
 
-  // DHT11 sensörünü başlat
-  Serial.println("\n🌡️ DHT11 sensörü başlatılıyor...");
+  // İlk ADC okuması (başlangıç durumu)
+  delay(100);
+  int initialADC = analogRead(ADC_PIN);
+  Serial.printf("   📊 Başlangıç ADC değeri: %d (%.3fV)\n", initialADC, initialADC * 3.3f / 1023.0f);
+
+  // DHT22 sensörünü başlat
+  Serial.println("\n🌡️ DHT22 sensörü başlatılıyor...");
   dht.begin();
-  Serial.println("✅ DHT11 sensörü başlatıldı (Pin: D4)");
-  Serial.println("💡 DHT11 çalışmazsa D3 pinini de deneyebilirsiniz");
+  Serial.println("✅ DHT22 sensörü başlatıldı (Pin: D3 = GPIO0)");
+  Serial.println("💡 DHT22/AM2302 dijital sensör - 3.3V güç gerekir");
   
-  // İlk DHT11 okumasını test et
-  delay(2000);
+  // İlk DHT22 okumasını test et (daha uzun bekleme)
+  Serial.println("🔄 DHT22 ilk okuma testi (5 saniye bekleme)...");
+  delay(5000); // DHT22 için daha uzun bekleme
+  
   float testTemp = dht.readTemperature();
   float testHum = dht.readHumidity();
   
   if (isnan(testTemp) || isnan(testHum)) {
-    Serial.println("⚠️ DHT11 ilk test başarısız - Sistem yine de çalışacak");
+    Serial.println("⚠️ DHT22 ilk test başarısız - Pin bağlantılarını kontrol edin");
+    Serial.println("💡 DHT22 Data → D3 (GPIO0), VCC → 3.3V, GND → GND");
   } else {
-    Serial.printf("✅ DHT11 test başarılı: %.1f°C, %.1f%%\n", testTemp, testHum);
+    Serial.printf("✅ DHT22 test başarılı: %.1f°C, %.1f%%\n", testTemp, testHum);
+  }
+
+  // ADC kalibrasyonu için test okumaları
+  Serial.println("\n🔬 ADC test okumaları (tüm pinler LOW):");
+  for (int i = 0; i < 5; i++) {
+    int adcVal = analogRead(ADC_PIN);
+    Serial.printf("   Test %d: ADC = %d (%.3fV)\n", i+1, adcVal, adcVal * 3.3f / 1023.0f);
+    delay(200);
   }
 
   // WiFi ağlarını tara
@@ -479,11 +535,13 @@ void setup() {
   // WiFi bağlantısını kur
   connectToWiFi();
   
-  Serial.println("\n🚀 Sistem hazır! Esnek sensör okuma modu aktif");
+  Serial.println("\n🚀 Sistem hazır! Sıralı analog sensör okuma modu");
   Serial.printf("⏰ Gönderim aralığı: %lu saniye\n", SEND_INTERVAL / 1000);
-  Serial.printf("📊 Örnekleme süresi: %lu saniye\n", SAMPLE_DURATION / 1000);
+  Serial.printf("📊 Her sensör örnekleme süresi: %lu saniye\n", SAMPLE_DURATION / 1000);
   Serial.printf("⏱️ Örnekleme aralığı: %lu ms\n", SAMPLE_INTERVAL);
-  Serial.println("💡 Sensörler bağlı olmasa bile -1 değerleri gönderilecek");
+  Serial.printf("🔄 Stabilizasyon gecikmesi: %lu ms\n", STAB_DELAY);
+  Serial.printf("⏸️ Sensörler arası gecikme: %lu ms\n", SENSOR_DELAY);
+  Serial.println("💡 Tüm analog sensörler A0'dan sırayla okunacak");
   Serial.println("════════════════════════════════════════════════════\n");
 }
 
@@ -492,11 +550,11 @@ void loop() {
   static unsigned long lastStatusCheck = 0;
   static int sendCounter = 0;
   
-  // Her 30 saniyede bir sistem durumu göster
-  if (currentTime - lastStatusCheck >= 30000) {
+  // Her 60 saniyede bir sistem durumu göster (daha az sıklıkta)
+  if (currentTime - lastStatusCheck >= 60000) {
     Serial.println("\n📊 SİSTEM DURUMU RAPORU");
     Serial.println("═══════════════════════════════════");
-    Serial.printf("⏰ Çalışma süresi: %lu saniye\n", currentTime / 1000);
+    Serial.printf("⏰ Çalışma süresi: %lu dakika\n", currentTime / 60000);
     Serial.printf("📡 WiFi durumu: %s\n", WiFi.status() == WL_CONNECTED ? "Bağlı" : "Bağlı değil");
     if (WiFi.status() == WL_CONNECTED) {
       Serial.printf("📶 Sinyal gücü: %d dBm\n", WiFi.RSSI());
@@ -504,6 +562,10 @@ void loop() {
     }
     Serial.printf("📤 Toplam gönderim: %d\n", sendCounter);
     Serial.printf("💾 Serbest RAM: %d bytes\n", ESP.getFreeHeap());
+    
+    // Hızlı ADC durum kontrolü
+    int currentADC = analogRead(ADC_PIN);
+    Serial.printf("📊 Anlık ADC: %d (%.3fV)\n", currentADC, currentADC * 3.3f / 1023.0f);
     Serial.println("═══════════════════════════════════\n");
     lastStatusCheck = currentTime;
   }
@@ -517,12 +579,15 @@ void loop() {
   // Belirlenen aralıklarla veri gönder
   if (currentTime - lastSendTime >= SEND_INTERVAL) {
     sendCounter++;
-    Serial.printf("\n🔄 Veri gönderimi #%d başlatılıyor...\n", sendCounter);
+    Serial.printf("\n🔄 Sıralı sensör okuma #%d başlatılıyor...\n", sendCounter);
+    Serial.println("📝 Not: Tüm analog sensörler A0'dan sırayla okunacak");
     sendSensorData();
     lastSendTime = currentTime;
     
     // Bir sonraki gönderim zamanını göster
-    Serial.printf("\n⏰ Bir sonraki gönderim: %lu saniye sonra\n\n", SEND_INTERVAL / 1000);
+    Serial.printf("\n⏰ Bir sonraki sıralı okuma: %lu saniye sonra\n", SEND_INTERVAL / 1000);
+    Serial.printf("📊 Toplam sensör okuma süresi: ~%lu saniye\n", (SAMPLE_DURATION * 4 + SENSOR_DELAY * 4) / 1000);
+    Serial.println("════════════════════════════════════════════════════\n");
   }
   
   delay(100); // CPU'yu rahatlatmak için kısa delay
