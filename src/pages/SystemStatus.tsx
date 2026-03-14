@@ -1,6 +1,6 @@
 import { useSensorData } from '@/lib/sensors/DataProvider';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { SENSOR_IDS, SENSOR_CONFIGS } from '@/lib/sensors/types';
+import { SENSOR_IDS, SENSOR_CONFIGS, POOL_CONFIGS } from '@/lib/sensors/types';
 import { cn } from '@/lib/utils';
 import { Wifi, Battery, Clock, Activity } from 'lucide-react';
 
@@ -19,7 +19,7 @@ function rssiLabel(rssi: number): string {
 }
 
 export default function SystemStatus() {
-  const { systemInfo } = useSensorData();
+  const { systemInfo, pools } = useSensorData();
 
   return (
     <DashboardLayout>
@@ -49,32 +49,38 @@ export default function SystemStatus() {
           ))}
         </div>
 
-        {/* Sensor connections */}
-        <div>
-          <h2 className="text-sm font-medium text-foreground mb-3">Sensor Connections</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {SENSOR_IDS.map(id => {
-              const online = systemInfo.sensorConnections[id];
-              return (
-                <div key={id} className="flex items-center justify-between rounded-lg border border-border/50 bg-card px-4 py-3">
-                  <span className="text-sm text-foreground">{SENSOR_CONFIGS[id].label}</span>
-                  <div className="flex items-center gap-2">
-                    <div className={cn(
-                      'h-2 w-2 rounded-full',
-                      online ? 'bg-[hsl(var(--status-healthy))]' : 'bg-[hsl(var(--status-critical))]'
-                    )} />
-                    <span className={cn(
-                      'text-xs font-medium',
-                      online ? 'text-[hsl(var(--status-healthy))]' : 'text-[hsl(var(--status-critical))]'
-                    )}>
-                      {online ? 'Online' : 'Offline'}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {/* Per-pool sensor connections */}
+        {POOL_CONFIGS.map(pc => {
+          const pool = pools[pc.id];
+          if (!pool) return null;
+          return (
+            <div key={pc.id}>
+              <h2 className="text-sm font-medium text-foreground mb-3">{pc.name} — Sensor Connections</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {SENSOR_IDS.map(id => {
+                  const online = systemInfo.sensorConnections[id];
+                  return (
+                    <div key={id} className="flex items-center justify-between rounded-lg border border-border/50 bg-card px-4 py-3">
+                      <span className="text-sm text-foreground">{SENSOR_CONFIGS[id].label}</span>
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          'h-2 w-2 rounded-full',
+                          online ? 'bg-status-healthy' : 'bg-status-critical'
+                        )} />
+                        <span className={cn(
+                          'text-xs font-medium',
+                          online ? 'text-status-healthy' : 'text-status-critical'
+                        )}>
+                          {online ? 'Online' : 'Offline'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </DashboardLayout>
   );

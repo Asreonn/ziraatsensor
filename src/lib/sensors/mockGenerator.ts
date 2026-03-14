@@ -1,19 +1,10 @@
 import {
-  SensorConfig,
-  SensorReading,
-  SensorStatus,
-  SensorId,
-  Anomaly,
-  AnomalyType,
-  AnomalySeverity,
-  TrendDirection,
-  SENSOR_CONFIGS,
-  SENSOR_IDS,
-  SystemInfo,
+  SensorConfig, SensorReading, SensorStatus, SensorId,
+  Anomaly, AnomalySeverity, TrendDirection,
+  SENSOR_CONFIGS, SENSOR_IDS, SystemInfo, PoolConfig,
 } from './types';
 
-// Simple seeded noise for realistic sensor drift
-let noiseState: Record<string, number> = {};
+const noiseState: Record<string, number> = {};
 
 function smoothNoise(key: string, t: number): number {
   if (!(key in noiseState)) noiseState[key] = Math.random() * 1000;
@@ -22,12 +13,12 @@ function smoothNoise(key: string, t: number): number {
   return (Math.sin(x * 2.1) * 0.5 + Math.sin(x * 5.3) * 0.25 + Math.sin(x * 11.7) * 0.125) / 0.875;
 }
 
-export function generateValue(config: SensorConfig, timeOffset: number = 0): number {
+export function generateValue(config: SensorConfig, poolOffset: number, timeOffset: number = 0): number {
   const now = (Date.now() / 1000) + timeOffset;
   const sinWave = Math.sin((2 * Math.PI * now) / config.period);
-  const noise = smoothNoise(config.id, now);
+  const noise = smoothNoise(`${config.id}-${poolOffset}`, now);
   const microNoise = (Math.random() - 0.5) * config.amplitude * 0.1;
-  const value = config.baseValue + sinWave * config.amplitude * 0.6 + noise * config.amplitude * 0.4 + microNoise;
+  const value = config.baseValue + poolOffset + sinWave * config.amplitude * 0.6 + noise * config.amplitude * 0.4 + microNoise;
   return Math.max(config.min, Math.min(config.max, Number(value.toFixed(2))));
 }
 
@@ -37,19 +28,15 @@ export function getStatus(config: SensorConfig, value: number): SensorStatus {
   return 'healthy';
 }
 
-export function generateReading(config: SensorConfig, timeOffset: number = 0): SensorReading {
-  const value = generateValue(config, timeOffset);
-  return {
-    value,
-    timestamp: new Date(Date.now() + timeOffset * 1000),
-    status: getStatus(config, value),
-  };
+export function generateReading(config: SensorConfig, poolOffset: number, timeOffset: number = 0): SensorReading {
+  const value = generateValue(config, poolOffset, timeOffset);
+  return { value, timestamp: new Date(Date.now() + timeOffset * 1000), status: getStatus(config, value) };
 }
 
-export function generateHistory(config: SensorConfig, points: number = 60, intervalSec: number = 60): SensorReading[] {
+export function generateHistory(config: SensorConfig, poolOffset: number, points: number = 60, intervalSec: number = 60): SensorReading[] {
   const readings: SensorReading[] = [];
   for (let i = points - 1; i >= 0; i--) {
-    readings.push(generateReading(config, -i * intervalSec));
+    readings.push(generateReading(config, poolOffset, -i * intervalSec));
   }
   return readings;
 }
@@ -76,7 +63,7 @@ export function calculateTrend(history: SensorReading[]): TrendDirection {
 
 let anomalyCounter = 0;
 
-export function detectAnomalies(sensorId: SensorId, history: SensorReading[]): Anomaly[] {
+export function detectAnomalies(poolId: string, sensorId: SensorId, history: SensorReading[]): Anomaly[] {
   const config = SENSOR_CONFIGS[sensorId];
   const anomalies: Anomaly[] = [];
   if (history.length < 3) return anomalies;
@@ -84,67 +71,47 @@ export function detectAnomalies(sensorId: SensorId, history: SensorReading[]): A
   const latest = history[history.length - 1];
   const prev = history[history.length - 2];
 
-  // Threshold breach
   if (latest.status === 'critical') {
     const isHigh = latest.value > config.criticalMax;
     anomalies.push({
-      id: `anomaly-${++anomalyCounter}`,
-      sensorId,
-      sensorLabel: config.label,
-      type: 'threshold',
-      severity: 'high',
-      value: latest.value,
-      threshold: isHigh ? config.criticalMax : config.criticalMin,
-      timestamp: latest.timestamp,
+      id: `a-${++anomalyCounter}`, poolId, sensorId, sensorLabel: config.label,
+      type: 'threshold', severity: 'high', value: latest.value,
+      threshold: isHigh ? config.criticalMax : config.criticalMin, timestamp: latest.timestamp,
       message: `${config.label} ${isHigh ? 'exceeded' : 'below'} critical threshold: ${latest.value}${config.unit}`,
+      read: false,
     });
   } else if (latest.status === 'warning') {
     const isHigh = latest.value > config.warningMax;
     anomalies.push({
-      id: `anomaly-${++anomalyCounter}`,
-      sensorId,
-      sensorLabel: config.label,
-      type: 'threshold',
-      severity: 'medium',
-      value: latest.value,
-      threshold: isHigh ? config.warningMax : config.warningMin,
-      timestamp: latest.timestamp,
+      id: `a-${++anomalyCounter}`, poolId, sensorId, sensorLabel: config.label,
+      type: 'threshold', severity: 'medium', value: latest.value,
+      threshold: isHigh ? config.warningMax : config.warningMin, timestamp: latest.timestamp,
       message: `${config.label} ${isHigh ? 'above' : 'below'} warning range: ${latest.value}${config.unit}`,
+      read: false,
     });
   }
 
-  // Spike detection
   const change = Math.abs(latest.value - prev.value);
   const spikeThreshold = config.amplitude * 0.8;
   if (change > spikeThreshold) {
     anomalies.push({
-      id: `anomaly-${++anomalyCounter}`,
-      sensorId,
-      sensorLabel: config.label,
-      type: 'spike',
-      severity: change > config.amplitude ? 'high' : 'medium',
-      value: latest.value,
-      threshold: spikeThreshold,
-      timestamp: latest.timestamp,
+      id: `a-${++anomalyCounter}`, poolId, sensorId, sensorLabel: config.label,
+      type: 'spike', severity: change > config.amplitude ? 'high' : 'medium',
+      value: latest.value, threshold: spikeThreshold, timestamp: latest.timestamp,
       message: `Rapid ${latest.value > prev.value ? 'increase' : 'decrease'} in ${config.label}: Δ${change.toFixed(2)}${config.unit}`,
+      read: false,
     });
   }
 
-  // Deviation from rolling average
   if (history.length >= 20) {
     const avg = history.slice(-20).reduce((s, r) => s + r.value, 0) / 20;
     const deviation = Math.abs(latest.value - avg);
     if (deviation > config.amplitude * 1.2) {
       anomalies.push({
-        id: `anomaly-${++anomalyCounter}`,
-        sensorId,
-        sensorLabel: config.label,
-        type: 'deviation',
-        severity: 'low',
-        value: latest.value,
-        threshold: avg,
-        timestamp: latest.timestamp,
+        id: `a-${++anomalyCounter}`, poolId, sensorId, sensorLabel: config.label,
+        type: 'deviation', severity: 'low', value: latest.value, threshold: avg, timestamp: latest.timestamp,
         message: `${config.label} deviating from average (${avg.toFixed(2)}): current ${latest.value}${config.unit}`,
+        read: false,
       });
     }
   }
