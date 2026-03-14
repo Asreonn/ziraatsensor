@@ -14,25 +14,9 @@ export default function SettingsPage() {
       <div className="space-y-8 max-w-2xl">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Settings</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Pool configuration & thresholds</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Configuration & thresholds</p>
         </div>
 
-        {/* Pool info */}
-        <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
-          <h2 className="text-sm font-medium text-foreground">Pool Information</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-xs text-muted-foreground">Pool Name</Label>
-              <Input defaultValue="Alpha-1" className="mt-1" />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Location</Label>
-              <Input defaultValue="Lab B, Rack 3" className="mt-1" />
-            </div>
-          </div>
-        </div>
-
-        {/* Refresh */}
         <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
           <h2 className="text-sm font-medium text-foreground">Data Refresh</h2>
           <div className="flex items-center gap-3">
@@ -54,7 +38,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Thresholds */}
         <div className="rounded-xl border border-border/50 bg-card p-5 space-y-4">
           <h2 className="text-sm font-medium text-foreground">Sensor Thresholds</h2>
           <div className="space-y-4">
@@ -85,12 +68,11 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Future integrations */}
         <div className="rounded-xl border border-dashed border-border bg-card/50 p-5">
           <h2 className="text-sm font-medium text-foreground mb-2">Data Source Integration</h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Currently using mock data. To connect real sensors, replace the <code className="text-foreground bg-muted px-1 py-0.5 rounded text-[11px]">DataProvider</code> with
-            your ESP32 API endpoint, WebSocket, or MQTT broker. The component architecture is designed for drop-in replacement.
+            Currently using mock data. Replace the <code className="text-foreground bg-muted px-1 py-0.5 rounded text-[11px]">DataProvider</code> with
+            your ESP32 API endpoint, WebSocket, or MQTT broker for live data.
           </p>
         </div>
       </div>

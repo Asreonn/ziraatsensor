@@ -1,8 +1,7 @@
 import {
-  LayoutDashboard, BarChart3, AlertTriangle, Server, Settings,
+  LayoutDashboard, Server, Settings,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
-import { useLocation } from 'react-router-dom';
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, useSidebar,
@@ -10,8 +9,6 @@ import {
 
 const navItems = [
   { title: 'Overview', url: '/', icon: LayoutDashboard },
-  { title: 'Analytics', url: '/analytics', icon: BarChart3 },
-  { title: 'Anomalies', url: '/anomalies', icon: AlertTriangle },
   { title: 'System', url: '/system', icon: Server },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
@@ -19,7 +16,6 @@ const navItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  const location = useLocation();
 
   return (
     <Sidebar collapsible="icon">
