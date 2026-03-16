@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SensorData, Anomaly, SensorId } from '@/lib/sensors/types';
 import { AnomalyFeed } from './AnomalyFeed';
@@ -32,10 +32,15 @@ interface SensorDetailModalProps {
 export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolName, onMarkRead }: SensorDetailModalProps) {
   const [range, setRange] = useState(1);
 
-  // Mark as read when modal opens
-  if (open && onMarkRead) {
-    onMarkRead();
-  }
+  useEffect(() => {
+    if (open && sensor?.hasUnreadAnomaly) {
+      onMarkRead?.();
+    }
+  }, [open, onMarkRead, sensor?.config.id, sensor?.hasUnreadAnomaly]);
+
+  useEffect(() => {
+    setRange(1);
+  }, [sensor?.config.id]);
 
   const stats = useMemo(() => {
     if (!sensor) return null;
@@ -68,16 +73,15 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto p-0 gap-0">
-        {/* Header */}
-        <DialogHeader className="p-6 pb-4 border-b border-border/50">
+      <DialogContent className="max-h-[85vh] max-w-2xl gap-0 overflow-y-auto border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(240,252,245,0.94))] p-0">
+        <DialogHeader className="border-b border-border/50 p-6 pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <DialogTitle className="text-lg font-semibold">{config.label}</DialogTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">{poolName} · {config.unit || 'unitless'}</p>
+              <DialogTitle className="font-display text-xl font-semibold">{config.label}</DialogTitle>
+              <p className="mt-0.5 text-xs uppercase tracking-[0.18em] text-muted-foreground">{poolName} · {config.unit || 'unitless'}</p>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-semibold tabular-nums text-foreground">
+              <span className="font-display text-3xl font-semibold tabular-nums text-foreground">
                 {current.value.toFixed(config.id === 'ph' ? 2 : 1)}
               </span>
               {config.unit && <span className="text-sm text-muted-foreground ml-1">{config.unit}</span>}
@@ -105,7 +109,7 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
                 ))}
               </div>
             </div>
-            <div className="rounded-lg border border-border/50 bg-muted/20 p-3">
+            <div className="rounded-[1.4rem] border border-border/60 bg-white/72 p-3">
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <defs>
@@ -133,14 +137,14 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
           </div>
 
           {/* Stats row */}
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {[
               { label: 'MIN', value: stats.min.toFixed(2), icon: ArrowDown, color: 'text-status-healthy' },
               { label: 'MAX', value: stats.max.toFixed(2), icon: ArrowUp, color: 'text-status-warning' },
               { label: 'AVG', value: stats.avg.toFixed(2), icon: Activity, color: 'text-primary' },
               { label: 'TREND', value: trendLabels[trend], icon: TrendIcon, color: trend === 'rising' ? 'text-status-warning' : trend === 'falling' ? 'text-status-healthy' : 'text-muted-foreground' },
             ].map(s => (
-              <div key={s.label} className="rounded-lg border border-border/50 bg-card p-3">
+              <div key={s.label} className="rounded-[1.25rem] border border-border/60 bg-white/76 p-3">
                 <div className="flex items-center gap-1.5 mb-1">
                   <s.icon className={cn('h-3 w-3', s.color)} />
                   <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{s.label}</span>
@@ -151,8 +155,8 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
           </div>
 
           {/* Threshold info */}
-          <div className="rounded-lg border border-border/50 bg-card p-4">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Thresholds</span>
+          <div className="rounded-[1.4rem] border border-border/60 bg-white/76 p-4">
+            <span className="text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">Thresholds</span>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1 mt-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Warning range</span>
@@ -173,7 +177,7 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
             {sensorAnomalies.length > 0 ? (
               <AnomalyFeed anomalies={sensorAnomalies} limit={10} />
             ) : (
-              <p className="text-xs text-muted-foreground py-4 text-center">No anomalies recorded</p>
+              <p className="py-4 text-center text-xs text-muted-foreground">No anomalies recorded</p>
             )}
           </div>
         </div>

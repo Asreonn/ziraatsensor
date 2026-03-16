@@ -130,3 +130,15 @@ export function generateSystemInfo(): SystemInfo {
     sensorConnections: connections as Record<SensorId, boolean>,
   };
 }
+
+export function generatePoolSystemInfo(seed: string): SystemInfo {
+  const info = generateSystemInfo();
+  const seedValue = seed.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return {
+    uptime: info.uptime + seedValue * 10,
+    rssi: info.rssi - (seedValue % 6),
+    voltage: Number((info.voltage - (seedValue % 4) * 0.03).toFixed(2)),
+    lastSync: info.lastSync,
+    sensorConnections: info.sensorConnections,
+  };
+}

@@ -53,6 +53,9 @@ export default {
           critical: "hsl(var(--status-critical))",
           offline: "hsl(var(--status-offline))",
         },
+        "surface-1": "hsl(var(--surface-1))",
+        "surface-2": "hsl(var(--surface-2))",
+        "surface-elevated": "hsl(var(--surface-elevated))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

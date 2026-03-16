@@ -1,0 +1,2 @@
+-- Seed intentionally left empty.
+-- User workspaces are bootstrapped on first authenticated session via bootstrap_user_workspace().

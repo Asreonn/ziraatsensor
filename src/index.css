@@ -1,106 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 220 25% 10%;
+    --background: 142 44% 97%;
+    --foreground: 162 46% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 10%;
+    --card-foreground: 162 46% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
+    --popover-foreground: 162 46% 12%;
 
-    --primary: 220 70% 50%;
+    --primary: 151 90% 38%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 20% 94%;
-    --secondary-foreground: 220 25% 10%;
+    --secondary: 90 76% 88%;
+    --secondary-foreground: 162 46% 12%;
 
-    --muted: 215 20% 94%;
-    --muted-foreground: 215 15% 47%;
+    --muted: 145 32% 92%;
+    --muted-foreground: 164 18% 37%;
 
-    --accent: 215 20% 94%;
-    --accent-foreground: 220 25% 10%;
+    --accent: 163 44% 90%;
+    --accent-foreground: 162 46% 12%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 15 83% 56%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 20% 92%;
-    --input: 214 20% 92%;
-    --ring: 220 70% 50%;
+    --border: 150 24% 83%;
+    --input: 150 24% 83%;
+    --ring: 151 90% 38%;
 
     --radius: 0.625rem;
 
-    /* Sensor status colors */
-    --status-healthy: 152 60% 42%;
-    --status-warning: 38 92% 50%;
-    --status-critical: 0 72% 51%;
-    --status-offline: 215 15% 47%;
+    --status-healthy: 151 80% 37%;
+    --status-warning: 77 84% 45%;
+    --status-critical: 13 81% 54%;
+    --status-offline: 160 9% 50%;
 
-    /* Subtle surface layers */
-    --surface-1: 210 20% 98%;
+    --surface-1: 142 48% 97%;
     --surface-2: 0 0% 100%;
-    --surface-elevated: 0 0% 100%;
+    --surface-elevated: 144 52% 99%;
 
-    --sidebar-background: 220 25% 10%;
-    --sidebar-foreground: 210 20% 82%;
-    --sidebar-primary: 220 70% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 20% 16%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 220 20% 18%;
-    --sidebar-ring: 220 70% 50%;
+    --sidebar-background: 163 61% 10%;
+    --sidebar-foreground: 144 24% 86%;
+    --sidebar-primary: 81 88% 58%;
+    --sidebar-primary-foreground: 162 55% 10%;
+    --sidebar-accent: 162 39% 16%;
+    --sidebar-accent-foreground: 144 20% 96%;
+    --sidebar-border: 162 35% 18%;
+    --sidebar-ring: 151 90% 38%;
   }
 
   .dark {
-    --background: 222 25% 7%;
-    --foreground: 210 20% 92%;
+    --background: 162 50% 7%;
+    --foreground: 142 20% 92%;
 
-    --card: 222 20% 10%;
-    --card-foreground: 210 20% 92%;
+    --card: 161 39% 10%;
+    --card-foreground: 142 20% 92%;
 
-    --popover: 222 20% 10%;
-    --popover-foreground: 210 20% 92%;
+    --popover: 161 39% 10%;
+    --popover-foreground: 142 20% 92%;
 
-    --primary: 220 70% 60%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 151 82% 46%;
+    --primary-foreground: 161 50% 7%;
 
-    --secondary: 220 18% 16%;
-    --secondary-foreground: 210 20% 92%;
+    --secondary: 161 22% 16%;
+    --secondary-foreground: 142 20% 92%;
 
-    --muted: 220 18% 16%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 161 22% 16%;
+    --muted-foreground: 148 12% 62%;
 
-    --accent: 220 18% 16%;
-    --accent-foreground: 210 20% 92%;
+    --accent: 161 22% 16%;
+    --accent-foreground: 142 20% 92%;
 
-    --destructive: 0 62% 45%;
+    --destructive: 15 77% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 18% 16%;
-    --input: 220 18% 16%;
-    --ring: 220 70% 60%;
+    --border: 162 20% 18%;
+    --input: 162 20% 18%;
+    --ring: 151 82% 46%;
 
-    --status-healthy: 152 55% 48%;
-    --status-warning: 38 85% 55%;
-    --status-critical: 0 65% 55%;
-    --status-offline: 215 15% 40%;
+    --status-healthy: 151 62% 47%;
+    --status-warning: 77 81% 55%;
+    --status-critical: 15 76% 56%;
+    --status-offline: 161 9% 40%;
 
-    --surface-1: 222 25% 7%;
-    --surface-2: 222 20% 10%;
-    --surface-elevated: 222 18% 13%;
+    --surface-1: 162 50% 7%;
+    --surface-2: 161 39% 10%;
+    --surface-elevated: 162 26% 13%;
 
-    --sidebar-background: 222 28% 5%;
-    --sidebar-foreground: 210 20% 75%;
-    --sidebar-primary: 220 70% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 22% 12%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 222 22% 12%;
-    --sidebar-ring: 220 70% 60%;
+    --sidebar-background: 163 61% 7%;
+    --sidebar-foreground: 144 24% 82%;
+    --sidebar-primary: 81 88% 58%;
+    --sidebar-primary-foreground: 162 55% 10%;
+    --sidebar-accent: 162 39% 13%;
+    --sidebar-accent-foreground: 144 20% 96%;
+    --sidebar-border: 162 32% 14%;
+    --sidebar-ring: 151 82% 46%;
   }
 }
 
@@ -108,13 +108,47 @@
   * {
     @apply border-border;
   }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: "Manrope", sans-serif;
+    background-image:
+      radial-gradient(circle at top left, rgba(210, 245, 74, 0.38), transparent 28%),
+      radial-gradient(circle at top right, rgba(13, 187, 108, 0.18), transparent 26%),
+      linear-gradient(180deg, hsl(var(--surface-1)), hsl(var(--background)));
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(10, 108, 79, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(10, 108, 79, 0.035) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(circle at center, black, transparent 86%);
+    opacity: 0.5;
+    z-index: -1;
   }
 }
 
 @layer utilities {
+  .font-display {
+    font-family: "Space Grotesk", "Manrope", sans-serif;
+  }
+
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }

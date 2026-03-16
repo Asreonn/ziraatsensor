@@ -1,8 +1,9 @@
 import { useSensorData } from '@/lib/sensors/DataProvider';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { SENSOR_IDS, SENSOR_CONFIGS, POOL_CONFIGS } from '@/lib/sensors/types';
+import { InfoHint } from '@/components/ui/info-hint';
+import { SENSOR_IDS, SENSOR_CONFIGS } from '@/lib/sensors/types';
 import { cn } from '@/lib/utils';
-import { Wifi, Battery, Clock, Activity } from 'lucide-react';
+import { Activity, Battery, Clock, RadioTower, Wifi } from 'lucide-react';
 
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
@@ -19,66 +20,96 @@ function rssiLabel(rssi: number): string {
 }
 
 export default function SystemStatus() {
-  const { systemInfo, pools } = useSensorData();
+  const { pools } = useSensorData();
+  const poolList = Object.values(pools).sort((left, right) => left.config.sortOrder - right.config.sortOrder);
+  const systemInfo = poolList[0]?.systemInfo;
+
+  const summary = {
+    uptime: systemInfo?.uptime ?? 0,
+    rssi: systemInfo?.rssi ?? -100,
+    voltage: systemInfo?.voltage ?? 0,
+    lastSync: systemInfo?.lastSync ?? new Date(0),
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">System Status</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">ESP32 controller telemetry</p>
-        </div>
+        <section className="rounded-[1.8rem] border border-border/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(237,252,243,0.92))] p-5 shadow-[0_30px_80px_-55px_rgba(7,130,95,0.75)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <RadioTower className="h-4 w-4 text-primary" />
+              <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground">Sistem</h2>
+              <InfoHint label="Bu ekran gateway, guc ve sensör hat baglantilarini izler. Offline sensorler kritik olarak isaretlenir." />
+            </div>
+            <div className="rounded-full border border-border/70 bg-white/76 px-3 py-1.5 text-xs text-muted-foreground">
+              Havuz baglanti durumu
+            </div>
+          </div>
+        </section>
 
-        {/* ESP Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { icon: Clock, label: 'Uptime', value: formatUptime(systemInfo.uptime) },
-            { icon: Wifi, label: 'RSSI', value: `${systemInfo.rssi} dBm (${rssiLabel(systemInfo.rssi)})` },
-            { icon: Battery, label: 'Voltage', value: `${systemInfo.voltage.toFixed(2)}V` },
-            { icon: Activity, label: 'Last Sync', value: systemInfo.lastSync.toLocaleTimeString() },
+            { icon: Clock, label: 'Uptime', value: formatUptime(summary.uptime) },
+            { icon: Wifi, label: 'RSSI', value: `${summary.rssi} dBm (${rssiLabel(summary.rssi)})` },
+            { icon: Battery, label: 'Voltage', value: `${summary.voltage.toFixed(2)}V` },
+            { icon: Activity, label: 'Last Sync', value: summary.lastSync.getTime() > 0 ? summary.lastSync.toLocaleTimeString('tr-TR') : 'Yok' },
           ].map(stat => (
-            <div key={stat.label} className="rounded-xl border border-border/50 bg-card p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <div key={stat.label} className="rounded-[1.6rem] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(242,252,246,0.9))] p-5 shadow-[0_25px_65px_-48px_rgba(7,130,95,0.75)]">
+              <div className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <stat.icon className="h-4 w-4" />
+                </div>
+                <span className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
                   {stat.label}
                 </span>
               </div>
-              <span className="text-sm font-semibold tabular-nums text-foreground">{stat.value}</span>
+              <span className="mt-4 block font-display text-2xl font-semibold tabular-nums text-foreground">{stat.value}</span>
             </div>
           ))}
         </div>
 
-        {/* Per-pool sensor connections */}
-        {POOL_CONFIGS.map(pc => {
-          const pool = pools[pc.id];
-          if (!pool) return null;
+        {poolList.map(pool => {
           return (
-            <div key={pc.id}>
-              <h2 className="text-sm font-medium text-foreground mb-3">{pc.name} — Sensor Connections</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <section
+              key={pool.config.id}
+              className="rounded-[2rem] border border-border/70 bg-card/88 p-6 shadow-[0_30px_80px_-55px_rgba(7,130,95,0.75)]"
+            >
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.26em] text-primary/80">Sensor hatlari</p>
+                  <h3 className="font-display mt-2 text-2xl font-semibold text-foreground">{pool.config.name}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{pool.config.location}</p>
+                </div>
+                <div className="rounded-full border border-border/80 bg-primary/8 px-3 py-1.5 text-xs font-medium text-primary">
+                  {pool.overallStatus === 'critical' ? 'Sahada kontrol onerilir' : 'Hatlar cevap veriyor'}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {SENSOR_IDS.map(id => {
-                  const online = systemInfo.sensorConnections[id];
                   return (
-                    <div key={id} className="flex items-center justify-between rounded-lg border border-border/50 bg-card px-4 py-3">
-                      <span className="text-sm text-foreground">{SENSOR_CONFIGS[id].label}</span>
+                    <div
+                      key={id}
+                      className="flex items-center justify-between rounded-[1.3rem] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(242,252,246,0.88))] px-4 py-3"
+                    >
+                      <span className="text-sm font-medium text-foreground">{SENSOR_CONFIGS[id].label}</span>
                       <div className="flex items-center gap-2">
                         <div className={cn(
-                          'h-2 w-2 rounded-full',
-                          online ? 'bg-status-healthy' : 'bg-status-critical'
+                          'h-2.5 w-2.5 rounded-full',
+                          pool.systemInfo.sensorConnections[id] ? 'bg-status-healthy' : 'bg-status-critical'
                         )} />
                         <span className={cn(
-                          'text-xs font-medium',
-                          online ? 'text-status-healthy' : 'text-status-critical'
+                          'text-xs font-semibold uppercase tracking-[0.14em]',
+                          pool.systemInfo.sensorConnections[id] ? 'text-status-healthy' : 'text-status-critical'
                         )}>
-                          {online ? 'Online' : 'Offline'}
+                          {pool.systemInfo.sensorConnections[id] ? 'Online' : 'Offline'}
                         </span>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
           );
         })}
       </div>

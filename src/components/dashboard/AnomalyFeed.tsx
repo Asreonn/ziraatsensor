@@ -34,7 +34,7 @@ export function AnomalyFeed({ anomalies, limit }: AnomalyFeedProps) {
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+      <div className="flex flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-border/80 bg-surface-elevated/70 py-12 text-muted-foreground">
         <Activity className="h-8 w-8 mb-2 opacity-40" />
         <p className="text-sm">No anomalies detected</p>
       </div>
@@ -49,7 +49,7 @@ export function AnomalyFeed({ anomalies, limit }: AnomalyFeedProps) {
           <div
             key={a.id}
             className={cn(
-              'flex items-start gap-3 rounded-lg border border-border/50 border-l-[3px] bg-card p-3.5 transition-colors',
+              'flex items-start gap-3 rounded-[1.3rem] border border-border/65 border-l-[3px] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(242,252,246,0.88))] p-3.5 transition-colors',
               severityBorder[a.severity],
             )}
           >

@@ -3,6 +3,7 @@ export type SensorStatus = 'healthy' | 'warning' | 'critical' | 'offline';
 export type AnomalyType = 'spike' | 'threshold' | 'deviation';
 export type AnomalySeverity = 'low' | 'medium' | 'high';
 export type TrendDirection = 'rising' | 'falling' | 'stable';
+export type DataMode = 'mock' | 'live';
 
 export interface SensorConfig {
   id: SensorId;
@@ -52,7 +53,7 @@ export interface PoolConfig {
   id: string;
   name: string;
   location: string;
-  /** Per-sensor base offsets to differentiate pools */
+  sortOrder: number;
   offsets: Partial<Record<SensorId, number>>;
 }
 
@@ -61,6 +62,7 @@ export interface PoolData {
   sensors: Record<SensorId, SensorData>;
   anomalies: Anomaly[];
   overallStatus: SensorStatus;
+  systemInfo: SystemInfo;
 }
 
 export interface SystemInfo {
@@ -111,18 +113,21 @@ export const POOL_CONFIGS: PoolConfig[] = [
     id: 'pool-alpha',
     name: 'Alpha-1',
     location: 'Lab B, Rack 3',
+    sortOrder: 1,
     offsets: { ph: 0, ec: 0, do: 0, waterTemp: 0, airTemp: 0, humidity: 0 },
   },
   {
     id: 'pool-beta',
     name: 'Beta-2',
     location: 'Lab A, Rack 1',
+    sortOrder: 2,
     offsets: { ph: 0.3, ec: -0.2, do: 1.5, waterTemp: 2, airTemp: -1, humidity: -5 },
   },
   {
     id: 'pool-gamma',
     name: 'Gamma-3',
     location: 'Greenhouse, Section C',
+    sortOrder: 3,
     offsets: { ph: -0.5, ec: 0.4, do: -0.8, waterTemp: 3.5, airTemp: 4, humidity: 10 },
   },
 ];

@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+PRIVATE_ESP_SUPABASE_HANDOFF.md
 
 # Editor directories and files
 .vscode/*

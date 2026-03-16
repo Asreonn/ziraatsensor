@@ -44,27 +44,28 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
     <div
       onClick={onClick}
       className={cn(
-        'group relative rounded-xl bg-card p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 border border-border/50 cursor-pointer',
+        'group relative cursor-pointer overflow-hidden rounded-[1.7rem] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(241,252,245,0.9))] p-5 shadow-[0_24px_65px_-48px_rgba(7,130,95,0.7)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_32px_80px_-48px_rgba(7,130,95,0.82)]',
         hasUnreadAnomaly && 'ring-1 ring-status-warning/40',
       )}
     >
-      {/* Unread anomaly badge */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(13,187,108,0.12),transparent_72%)]" />
+
       {hasUnreadAnomaly && (
-        <div className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-5 w-5 rounded-full bg-status-warning shadow-sm animate-pulse">
-          <AlertTriangle className="h-3 w-3 text-white" />
+        <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-status-warning/14 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-status-warning">
+          <AlertTriangle className="h-3 w-3" />
+          Alert
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="relative flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className={cn('h-2 w-2 rounded-full', statusColors[current.status])} />
-          <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          <div className={cn('h-2.5 w-2.5 rounded-full', statusColors[current.status])} />
+          <span className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
             {config.label}
           </span>
         </div>
         <span className={cn(
-          'text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded-full',
+          'rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
           current.status === 'healthy' && 'text-status-healthy bg-status-healthy/10',
           current.status === 'warning' && 'text-status-warning bg-status-warning/10',
           current.status === 'critical' && 'text-status-critical bg-status-critical/10',
@@ -74,9 +75,8 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
         </span>
       </div>
 
-      {/* Value */}
-      <div className="flex items-baseline gap-2 mb-1">
-        <span className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+      <div className="relative flex items-baseline gap-2 mb-1">
+        <span className="font-display text-4xl font-semibold tabular-nums tracking-tight text-foreground">
           {current.value.toFixed(config.id === 'ph' ? 2 : 1)}
         </span>
         {config.unit && (
@@ -84,8 +84,7 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
         )}
       </div>
 
-      {/* Delta & Trend */}
-      <div className="flex items-center gap-2 mb-3">
+      <div className="relative flex items-center gap-2 mb-4">
         <TrendIcon className={cn(
           'h-3.5 w-3.5',
           trend === 'rising' && 'text-status-warning',
@@ -100,13 +99,11 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
         </span>
       </div>
 
-      {/* Sparkline */}
-      <div className="mb-2">
+      <div className="relative mb-3 rounded-[1.25rem] border border-border/65 bg-white/72 p-2">
         <SparklineChart data={history.slice(-30)} color={sparkColors[current.status]} height={36} />
       </div>
 
-      {/* Footer */}
-      <div className="text-[10px] text-muted-foreground">
+      <div className="relative text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
         Updated {timeAgo(current.timestamp)}
       </div>
     </div>
