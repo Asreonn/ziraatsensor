@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { formatSensorValue, hasSensorReading } from '@/lib/sensors/display';
 import { SensorData, Anomaly, SensorId } from '@/lib/sensors/types';
 import { AnomalyFeed } from './AnomalyFeed';
 import { TrendingUp, TrendingDown, Minus, ArrowDown, ArrowUp, Activity } from 'lucide-react';
@@ -44,7 +45,8 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
 
   const stats = useMemo(() => {
     if (!sensor) return null;
-    const values = sensor.history.map(r => r.value);
+    const values = sensor.history.filter(hasSensorReading).map(r => r.value);
+    if (values.length === 0) return null;
     return {
       min: Math.min(...values),
       max: Math.max(...values),
@@ -52,16 +54,17 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
     };
   }, [sensor]);
 
-  if (!sensor || !stats) return null;
+  if (!sensor) return null;
 
   const { config, current, history, trend } = sensor;
   const TrendIcon = trend === 'rising' ? TrendingUp : trend === 'falling' ? TrendingDown : Minus;
   const points = TIME_RANGES[range].points;
-  const chartData = history.slice(-points).map((r, i) => ({
+  const chartData = history.filter(hasSensorReading).slice(-points).map((r, i) => ({
     idx: i,
     value: r.value,
     time: r.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
   }));
+  const hasReading = hasSensorReading(current);
 
   const sensorAnomalies = anomalies.filter(a => a.sensorId === config.id);
 
@@ -82,9 +85,9 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
             </div>
             <div className="text-right">
               <span className="font-display text-3xl font-semibold tabular-nums text-foreground">
-                {current.value.toFixed(config.id === 'ph' ? 2 : 1)}
+                {formatSensorValue(current, config.id)}
               </span>
-              {config.unit && <span className="text-sm text-muted-foreground ml-1">{config.unit}</span>}
+              {config.unit && hasReading && <span className="text-sm text-muted-foreground ml-1">{config.unit}</span>}
             </div>
           </div>
         </DialogHeader>
@@ -110,39 +113,45 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
               </div>
             </div>
             <div className="rounded-[1.4rem] border border-border/60 bg-white/72 p-3">
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="modal-grad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={statusColor} stopOpacity={0.15} />
-                      <stop offset="100%" stopColor={statusColor} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="time" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval="preserveStartEnd" />
-                  <YAxis domain={['auto', 'auto']} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={40} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                    formatter={(v: number) => [v.toFixed(2), config.label]}
-                  />
-                  <Area type="monotone" dataKey="value" stroke={statusColor} strokeWidth={1.5} fill="url(#modal-grad)" dot={false} isAnimationActive={false} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="modal-grad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={statusColor} stopOpacity={0.15} />
+                        <stop offset="100%" stopColor={statusColor} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="time" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval="preserveStartEnd" />
+                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={40} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                      formatter={(v: number) => [v.toFixed(2), config.label]}
+                    />
+                    <Area type="monotone" dataKey="value" stroke={statusColor} strokeWidth={1.5} fill="url(#modal-grad)" dot={false} isAnimationActive={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+                  Supabase verisi yok
+                </div>
+              )}
             </div>
           </div>
 
           {/* Stats row */}
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {[
-              { label: 'MIN', value: stats.min.toFixed(2), icon: ArrowDown, color: 'text-status-healthy' },
-              { label: 'MAX', value: stats.max.toFixed(2), icon: ArrowUp, color: 'text-status-warning' },
-              { label: 'AVG', value: stats.avg.toFixed(2), icon: Activity, color: 'text-primary' },
-              { label: 'TREND', value: trendLabels[trend], icon: TrendIcon, color: trend === 'rising' ? 'text-status-warning' : trend === 'falling' ? 'text-status-healthy' : 'text-muted-foreground' },
+              { label: 'MIN', value: stats ? stats.min.toFixed(2) : '--', icon: ArrowDown, color: 'text-status-healthy' },
+              { label: 'MAX', value: stats ? stats.max.toFixed(2) : '--', icon: ArrowUp, color: 'text-status-warning' },
+              { label: 'AVG', value: stats ? stats.avg.toFixed(2) : '--', icon: Activity, color: 'text-primary' },
+              { label: 'TREND', value: stats ? trendLabels[trend] : '--', icon: TrendIcon, color: trend === 'rising' ? 'text-status-warning' : trend === 'falling' ? 'text-status-healthy' : 'text-muted-foreground' },
             ].map(s => (
               <div key={s.label} className="rounded-[1.25rem] border border-border/60 bg-white/76 p-3">
                 <div className="flex items-center gap-1.5 mb-1">

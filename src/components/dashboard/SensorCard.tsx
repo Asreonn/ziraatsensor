@@ -1,4 +1,5 @@
 import { SensorData } from '@/lib/sensors/types';
+import { formatSensorValue, hasSensorReading } from '@/lib/sensors/display';
 import { SparklineChart } from './SparklineChart';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
@@ -39,6 +40,7 @@ interface SensorCardProps {
 export function SensorCard({ data, onClick }: SensorCardProps) {
   const { config, current, history, delta, trend, hasUnreadAnomaly } = data;
   const TrendIcon = trend === 'rising' ? TrendingUp : trend === 'falling' ? TrendingDown : Minus;
+  const hasReading = hasSensorReading(current);
 
   return (
     <div
@@ -77,34 +79,46 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
 
       <div className="relative flex items-baseline gap-2 mb-1">
         <span className="font-display text-4xl font-semibold tabular-nums tracking-tight text-foreground">
-          {current.value.toFixed(config.id === 'ph' ? 2 : 1)}
+          {formatSensorValue(current, config.id)}
         </span>
-        {config.unit && (
+        {config.unit && hasReading && (
           <span className="text-sm text-muted-foreground font-medium">{config.unit}</span>
         )}
       </div>
 
       <div className="relative flex items-center gap-2 mb-4">
-        <TrendIcon className={cn(
-          'h-3.5 w-3.5',
-          trend === 'rising' && 'text-status-warning',
-          trend === 'falling' && 'text-status-healthy',
-          trend === 'stable' && 'text-muted-foreground',
-        )} />
-        <span className={cn(
-          'text-xs tabular-nums font-medium',
-          delta > 0 ? 'text-status-warning' : delta < 0 ? 'text-status-healthy' : 'text-muted-foreground',
-        )}>
-          {delta > 0 ? '+' : ''}{delta}%
-        </span>
+        {hasReading ? (
+          <>
+            <TrendIcon className={cn(
+              'h-3.5 w-3.5',
+              trend === 'rising' && 'text-status-warning',
+              trend === 'falling' && 'text-status-healthy',
+              trend === 'stable' && 'text-muted-foreground',
+            )} />
+            <span className={cn(
+              'text-xs tabular-nums font-medium',
+              delta > 0 ? 'text-status-warning' : delta < 0 ? 'text-status-healthy' : 'text-muted-foreground',
+            )}>
+              {delta > 0 ? '+' : ''}{delta}%
+            </span>
+          </>
+        ) : (
+          <span className="text-xs font-medium text-muted-foreground">Supabase verisi bekleniyor</span>
+        )}
       </div>
 
       <div className="relative mb-3 rounded-[1.25rem] border border-border/65 bg-white/72 p-2">
-        <SparklineChart data={history.slice(-30)} color={sparkColors[current.status]} height={36} />
+        {hasReading ? (
+          <SparklineChart data={history.slice(-30)} color={sparkColors[current.status]} height={36} />
+        ) : (
+          <div className="flex h-9 items-center justify-center text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Veri yok
+          </div>
+        )}
       </div>
 
       <div className="relative text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        Updated {timeAgo(current.timestamp)}
+        {hasReading ? `Updated ${timeAgo(current.timestamp)}` : 'Supabase verisi bekleniyor'}
       </div>
     </div>
   );

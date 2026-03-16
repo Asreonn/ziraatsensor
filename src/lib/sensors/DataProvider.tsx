@@ -13,7 +13,6 @@ import {
   SensorId,
   SensorReading,
   SystemInfo,
-  POOL_CONFIGS,
 } from './types';
 import {
   calculateDelta,
@@ -49,13 +48,6 @@ export function useSensorData() {
   return ctx;
 }
 
-function cloneDefaultPoolConfigs(): PoolConfig[] {
-  return POOL_CONFIGS.map(pool => ({
-    ...pool,
-    offsets: { ...pool.offsets },
-  }));
-}
-
 function normalizeOffsets(input: unknown): Partial<Record<SensorId, number>> {
   const fallback: Partial<Record<SensorId, number>> = {};
   if (!input || typeof input !== 'object' || Array.isArray(input)) return fallback;
@@ -70,10 +62,10 @@ function normalizeOffsets(input: unknown): Partial<Record<SensorId, number>> {
   return offsets;
 }
 
-function normalizeConnections(input: unknown): Record<SensorId, boolean> {
+function normalizeConnections(input: unknown, fallbackValue: boolean): Record<SensorId, boolean> {
   const connections = {} as Record<SensorId, boolean>;
   SENSOR_IDS.forEach(id => {
-    connections[id] = true;
+    connections[id] = fallbackValue;
   });
 
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
@@ -142,6 +134,36 @@ function buildMockInitialPools(poolConfigs: PoolConfig[]): Record<string, PoolDa
   return next;
 }
 
+function buildEmptyLivePools(poolConfigs: PoolConfig[]): Record<string, PoolData> {
+  const next = {} as Record<string, PoolData>;
+
+  poolConfigs.forEach(poolConfig => {
+    const sensors = {} as Record<SensorId, SensorData>;
+
+    SENSOR_IDS.forEach(id => {
+      const reading = createOfflineReading(id);
+      sensors[id] = {
+        config: SENSOR_CONFIGS[id],
+        current: reading,
+        history: [reading],
+        delta: 0,
+        trend: 'stable',
+        hasUnreadAnomaly: false,
+      };
+    });
+
+    next[poolConfig.id] = {
+      config: poolConfig,
+      sensors,
+      anomalies: [],
+      overallStatus: 'offline',
+      systemInfo: toSystemInfo(),
+    };
+  });
+
+  return next;
+}
+
 function tickMockPools(prev: Record<string, PoolData>, poolConfigs: PoolConfig[]): Record<string, PoolData> {
   const next = {} as Record<string, PoolData>;
 
@@ -187,10 +209,9 @@ function tickMockPools(prev: Record<string, PoolData>, poolConfigs: PoolConfig[]
 }
 
 function createOfflineReading(sensorId: SensorId): SensorReading {
-  const config = SENSOR_CONFIGS[sensorId];
   return {
-    value: config.baseValue,
-    timestamp: new Date(),
+    value: 0,
+    timestamp: new Date(0),
     status: 'offline',
   };
 }
@@ -293,7 +314,7 @@ function toSystemInfo(row?: PoolSystemStatusRow): SystemInfo {
       rssi: -100,
       voltage: 0,
       lastSync: new Date(0),
-      sensorConnections: normalizeConnections(null),
+      sensorConnections: normalizeConnections(null, false),
     };
   }
 
@@ -302,7 +323,7 @@ function toSystemInfo(row?: PoolSystemStatusRow): SystemInfo {
     rssi: row.rssi,
     voltage: row.voltage,
     lastSync: new Date(row.last_sync),
-    sensorConnections: normalizeConnections(row.sensor_connections),
+    sensorConnections: normalizeConnections(row.sensor_connections, false),
   };
 }
 
@@ -577,15 +598,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
 
         const nextPoolConfigs = (poolsData ?? []).map(mapPoolRowToConfig);
-        setPoolConfigs(nextPoolConfigs.length > 0 ? nextPoolConfigs : cloneDefaultPoolConfigs());
+        setPoolConfigs(nextPoolConfigs);
         setRefreshIntervalState(preferences?.refresh_interval_ms ?? DEFAULT_REFRESH_INTERVAL);
         setDataModeState(preferences?.use_mock_data === false ? 'live' : 'mock');
         setWorkspaceReady(true);
       } catch (workspaceError) {
         if (cancelled) return;
         setError(workspaceError instanceof Error ? workspaceError.message : 'Workspace yuklenemedi.');
-        setPoolConfigs(cloneDefaultPoolConfigs());
-        setDataModeState('mock');
+        setPools({});
+        setPoolConfigs([]);
         setWorkspaceReady(true);
       }
     }
@@ -619,7 +640,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     const syncLivePools = async (withLoadingState: boolean) => {
       if (!supabase || !user) return;
-      if (withLoadingState) setLoading(true);
+      if (withLoadingState) {
+        setPools(buildEmptyLivePools(poolConfigs));
+        setLoading(true);
+      }
 
       try {
         const snapshot = await fetchLivePools(poolConfigs, readAnomalyIdsRef.current);
@@ -628,6 +652,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setError(null);
       } catch (syncError) {
         if (cancelled) return;
+        setPools(buildEmptyLivePools(poolConfigs));
         setError(syncError instanceof Error ? syncError.message : 'Supabase verisi alinamadi.');
       } finally {
         if (!cancelled) setLoading(false);

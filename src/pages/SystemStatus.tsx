@@ -1,4 +1,5 @@
 import { useSensorData } from '@/lib/sensors/DataProvider';
+import { hasSystemStatusData } from '@/lib/sensors/display';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { InfoHint } from '@/components/ui/info-hint';
 import { SENSOR_IDS, SENSOR_CONFIGS } from '@/lib/sensors/types';
@@ -23,6 +24,7 @@ export default function SystemStatus() {
   const { pools } = useSensorData();
   const poolList = Object.values(pools).sort((left, right) => left.config.sortOrder - right.config.sortOrder);
   const systemInfo = poolList[0]?.systemInfo;
+  const hasStatusData = hasSystemStatusData(systemInfo);
 
   const summary = {
     uptime: systemInfo?.uptime ?? 0,
@@ -49,10 +51,10 @@ export default function SystemStatus() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            { icon: Clock, label: 'Uptime', value: formatUptime(summary.uptime) },
-            { icon: Wifi, label: 'RSSI', value: `${summary.rssi} dBm (${rssiLabel(summary.rssi)})` },
-            { icon: Battery, label: 'Voltage', value: `${summary.voltage.toFixed(2)}V` },
-            { icon: Activity, label: 'Last Sync', value: summary.lastSync.getTime() > 0 ? summary.lastSync.toLocaleTimeString('tr-TR') : 'Yok' },
+            { icon: Clock, label: 'Uptime', value: hasStatusData ? formatUptime(summary.uptime) : 'Yok' },
+            { icon: Wifi, label: 'RSSI', value: hasStatusData ? `${summary.rssi} dBm (${rssiLabel(summary.rssi)})` : 'Yok' },
+            { icon: Battery, label: 'Voltage', value: hasStatusData ? `${summary.voltage.toFixed(2)}V` : 'Yok' },
+            { icon: Activity, label: 'Last Sync', value: hasStatusData ? summary.lastSync.toLocaleTimeString('tr-TR') : 'Yok' },
           ].map(stat => (
             <div key={stat.label} className="rounded-[1.6rem] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(242,252,246,0.9))] p-5 shadow-[0_25px_65px_-48px_rgba(7,130,95,0.75)]">
               <div className="flex items-center gap-2">
@@ -81,7 +83,9 @@ export default function SystemStatus() {
                   <p className="mt-1 text-sm text-muted-foreground">{pool.config.location}</p>
                 </div>
                 <div className="rounded-full border border-border/80 bg-primary/8 px-3 py-1.5 text-xs font-medium text-primary">
-                  {pool.overallStatus === 'critical' ? 'Sahada kontrol onerilir' : 'Hatlar cevap veriyor'}
+                  {hasSystemStatusData(pool.systemInfo)
+                    ? pool.overallStatus === 'critical' ? 'Sahada kontrol onerilir' : 'Hatlar cevap veriyor'
+                    : 'Supabase durumu bekleniyor'}
                 </div>
               </div>
 

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useSensorData } from '@/lib/sensors/DataProvider';
+import { formatSensorValue } from '@/lib/sensors/display';
 import { SensorCard } from '@/components/dashboard/SensorCard';
 import { SensorDetailModal } from '@/components/dashboard/SensorDetailModal';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
@@ -252,7 +253,7 @@ export default function Overview() {
                                 s.current.status === 'warning' && 'text-status-warning',
                                 s.current.status === 'healthy' && 'text-foreground',
                               )}>
-                                {s.current.value.toFixed(s.config.id === 'ph' ? 1 : 0)}
+                                {formatSensorValue(s.current, s.config.id, s.config.id === 'ph' ? 1 : 0)}
                               </span>
                             </div>
                           );

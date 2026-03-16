@@ -59,7 +59,7 @@ export default function SettingsPage() {
             <div>
               <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Data mode</h2>
               <p className="mt-2 text-sm text-foreground">
-                Test acik ise rastgele veri uret, kapali ise Supabase verisini goster.
+                Test acik ise rastgele veri uret, reel modda yalnizca Supabase kayitlari gosterilir.
               </p>
             </div>
 
