@@ -34,6 +34,7 @@ supabase db push
 - `VITE_SUPABASE_URL` ve `VITE_SUPABASE_ANON_KEY` degerlerini `.env.local` icine yazin.
 - Uygulama giris zorunludur; her kullanicinin kendi `pools`, `sensor_readings` ve `pool_system_status` verisi vardir.
 - `user_preferences.use_mock_data` bool alani test veri mi yoksa Supabase verisi mi kullanilacagini belirler.
+- Yeni migration sonrasinda kullanicilar varsayilan olarak `reel` modda acilir; isterlerse ayarlardan tekrar test moduna donebilir.
 
 ## Proje yapisi
 
