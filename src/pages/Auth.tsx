@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { AicoLogo } from '@/components/brand/AicoLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,7 @@ export default function AuthPage() {
 
   const submitLabel = mode === 'signin' ? 'Giris yap' : 'Hesap olustur';
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
@@ -29,8 +29,7 @@ export default function AuthPage() {
         await signIn({ email, password });
       } else {
         await signUp({ email, password });
-        setMessage('Hesap olusturuldu. Dogrulama gerekmiyorsa dogrudan giris yapabilirsiniz.');
-        setMode('signin');
+        setMessage('Hesap olusturuldu. Otomatik giris yapiliyor...');
       }
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Bir hata olustu.');
@@ -93,7 +92,17 @@ supabase db push`}
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <Label htmlFor="email">E-posta</Label>
-            <Input id="email" type="email" value={email} onChange={event => setEmail(event.target.value)} required />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={event => setEmail(event.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="email"
+              spellCheck={false}
+              required
+            />
           </div>
 
           <div className="space-y-2">
@@ -103,6 +112,7 @@ supabase db push`}
               type="password"
               value={password}
               onChange={event => setPassword(event.target.value)}
+              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
               minLength={6}
               required
             />

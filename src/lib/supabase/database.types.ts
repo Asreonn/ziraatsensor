@@ -116,6 +116,13 @@ export interface Database {
         Args: Record<PropertyKey, never>;
         Returns: undefined;
       };
+      create_pool: {
+        Args: {
+          pool_location?: string;
+          pool_name: string;
+        };
+        Returns: string;
+      };
     };
   };
 }

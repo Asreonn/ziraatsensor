@@ -35,6 +35,7 @@ interface SensorContextValue {
   setRefreshInterval: (ms: number) => Promise<void>;
   dataMode: DataMode;
   setDataMode: (mode: DataMode) => Promise<void>;
+  createPool: (input: { name: string; location: string }) => Promise<string>;
   loading: boolean;
   error: string | null;
   markAnomaliesRead: (poolId: string, sensorId: SensorId) => void;
@@ -495,6 +496,44 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [persistPreferences]);
 
+  const createPool = useCallback(async ({ name, location }: { name: string; location: string }) => {
+    if (!supabase || !user) {
+      throw new Error('Oturum bulunamadi.');
+    }
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new Error('Pool adi zorunlu.');
+    }
+
+    setError(null);
+
+    const { data, error: createError } = await supabase.rpc('create_pool', {
+      pool_name: trimmedName,
+      pool_location: location.trim(),
+    });
+
+    if (createError) {
+      const message = createError.message.includes('duplicate key') ? 'Bu isimde bir pool zaten var.' : createError.message;
+      setError(message);
+      throw new Error(message);
+    }
+
+    const { data: poolsData, error: poolsError } = await supabase
+      .from('pools')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('sort_order');
+
+    if (poolsError) {
+      setError(poolsError.message);
+      throw poolsError;
+    }
+
+    setPoolConfigs((poolsData ?? []).map(mapPoolRowToConfig));
+    return data;
+  }, [user]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -612,10 +651,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setRefreshInterval,
     dataMode,
     setDataMode,
+    createPool,
     loading,
     error,
     markAnomaliesRead,
-  }), [dataMode, error, loading, markAnomaliesRead, pools, refreshInterval, setDataMode, setRefreshInterval]);
+  }), [createPool, dataMode, error, loading, markAnomaliesRead, pools, refreshInterval, setDataMode, setRefreshInterval]);
 
   return (
     <SensorContext.Provider value={value}>

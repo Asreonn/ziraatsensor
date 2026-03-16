@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useSensorData } from '@/lib/sensors/DataProvider';
 import { SensorCard } from '@/components/dashboard/SensorCard';
 import { SensorDetailModal } from '@/components/dashboard/SensorDetailModal';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { InfoHint } from '@/components/ui/info-hint';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { SENSOR_IDS, SensorId } from '@/lib/sensors/types';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, ArrowLeft, ChevronRight } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ChevronRight, Copy, Plus } from 'lucide-react';
 
 const statusDot: Record<string, string> = {
   healthy: 'bg-status-healthy',
@@ -23,9 +25,13 @@ const statusLabel: Record<string, string> = {
 };
 
 export default function Overview() {
-  const { pools, loading, error, markAnomaliesRead } = useSensorData();
+  const { pools, loading, error, markAnomaliesRead, createPool } = useSensorData();
   const [selectedPool, setSelectedPool] = useState<string | null>(null);
   const [modalSensor, setModalSensor] = useState<SensorId | null>(null);
+  const [newPoolName, setNewPoolName] = useState('');
+  const [newPoolLocation, setNewPoolLocation] = useState('');
+  const [creatingPool, setCreatingPool] = useState(false);
+  const [copiedPoolId, setCopiedPoolId] = useState<string | null>(null);
 
   const poolList = Object.values(pools).sort((left, right) => left.config.sortOrder - right.config.sortOrder);
   const openPool = selectedPool ? pools[selectedPool] : null;
@@ -40,6 +46,36 @@ export default function Overview() {
   const handleSensorClick = (poolId: string, sensorId: SensorId) => {
     setSelectedPool(poolId);
     setModalSensor(sensorId);
+  };
+
+  const handleCopyPoolId = async (poolId: string) => {
+    try {
+      await navigator.clipboard.writeText(poolId);
+      setCopiedPoolId(poolId);
+      window.setTimeout(() => {
+        setCopiedPoolId(current => (current === poolId ? null : current));
+      }, 1400);
+    } catch {
+      setCopiedPoolId(null);
+    }
+  };
+
+  const handleCreatePool = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCreatingPool(true);
+
+    try {
+      const createdPoolId = await createPool({
+        name: newPoolName,
+        location: newPoolLocation,
+      });
+
+      setNewPoolName('');
+      setNewPoolLocation('');
+      setSelectedPool(createdPoolId);
+    } finally {
+      setCreatingPool(false);
+    }
   };
 
   return (
@@ -91,6 +127,71 @@ export default function Overview() {
                 Bu kullanici icin pool kaydi bulunamadi.
               </div>
             )}
+
+            <section className="rounded-[1.8rem] border border-border/70 bg-card/88 p-5 shadow-[0_26px_70px_-52px_rgba(7,130,95,0.65)]">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-xl font-semibold text-foreground">ESP pool ID'leri</h3>
+                    <InfoHint label="ESP her zaman ilgili pool UUID'sine veri gondermeli. Kayit olan her hesap icin ilk pool otomatik acilir." />
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">Bu ID'leri cihaza sabit yazabilir veya sonradan yeni pool olusturabilirsiniz.</p>
+                </div>
+
+                <form className="flex w-full flex-col gap-2 md:w-auto md:min-w-[420px]" onSubmit={handleCreatePool}>
+                  <div className="grid gap-2 sm:grid-cols-[1.2fr_1fr_auto]">
+                    <Input
+                      placeholder="Yeni pool adi"
+                      value={newPoolName}
+                      onChange={event => setNewPoolName(event.target.value)}
+                    />
+                    <Input
+                      placeholder="Konum"
+                      value={newPoolLocation}
+                      onChange={event => setNewPoolLocation(event.target.value)}
+                    />
+                    <Button className="gap-2" disabled={creatingPool} type="submit">
+                      <Plus className="h-4 w-4" />
+                      {creatingPool ? 'Ekleniyor' : 'Pool ekle'}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {poolList.map(pool => (
+                  <div
+                    key={pool.config.id}
+                    className="flex flex-col gap-3 rounded-[1.3rem] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(242,252,246,0.9))] px-4 py-3 md:flex-row md:items-center"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-display text-lg font-semibold text-foreground">{pool.config.name}</span>
+                        <span className="text-sm text-muted-foreground">{pool.config.location}</span>
+                      </div>
+                      <div className="mt-2 break-all rounded-xl border border-border/70 bg-white/80 px-3 py-2 font-mono text-xs text-foreground">
+                        {pool.config.id}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => void handleCopyPoolId(pool.config.id)}
+                      >
+                        <Copy className="h-4 w-4" />
+                        {copiedPoolId === pool.config.id ? 'Kopyalandi' : 'ID kopyala'}
+                      </Button>
+                      <Button type="button" onClick={() => setSelectedPool(pool.config.id)}>
+                        Ac
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {poolList.map(pool => {
@@ -180,6 +281,13 @@ export default function Overview() {
               <span className="font-display text-xl font-semibold text-foreground">{openPool.config.name}</span>
               <span className="text-sm text-muted-foreground">{openPool.config.location}</span>
               <InfoHint label="Bu satir secili havuzu gosterir. Asagidaki sensor kartlariyla detay modalina inebilirsin." />
+              <button
+                type="button"
+                onClick={() => void handleCopyPoolId(openPool.config.id)}
+                className="rounded-full border border-border/70 bg-white/76 px-3 py-1.5 font-mono text-[11px] text-foreground transition-colors hover:bg-white"
+              >
+                {copiedPoolId === openPool.config.id ? 'Kopyalandi' : openPool.config.id}
+              </button>
 
               <div className="ml-auto flex flex-wrap gap-2">
                 <div className="rounded-full border border-border/70 bg-white/76 px-3 py-1.5 text-xs text-muted-foreground">

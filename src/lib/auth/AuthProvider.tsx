@@ -72,13 +72,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     async signIn({ email, password }) {
       if (!supabase) throw new Error('Supabase is not configured.');
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const normalizedEmail = email.trim().toLowerCase();
+      const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password });
       if (error) throw error;
     },
     async signUp({ email, password }) {
       if (!supabase) throw new Error('Supabase is not configured.');
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) throw error;
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const { data, error } = await supabase.functions.invoke('register-user', {
+        body: {
+          email: normalizedEmail,
+          password,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
+      if (signInError) throw signInError;
     },
     async signOut() {
       if (!supabase) return;
