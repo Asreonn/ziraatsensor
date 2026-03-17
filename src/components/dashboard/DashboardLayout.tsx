@@ -1,7 +1,8 @@
 import { useLocation } from 'react-router-dom';
-import { Activity } from 'lucide-react';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { Activity, PanelLeft } from 'lucide-react';
+import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AicoLogo } from '@/components/brand/AicoLogo';
+import { Button } from '@/components/ui/button';
 import { AppSidebar } from './AppSidebar';
 
 const routeMeta: Record<string, { title: string; eyebrow: string }> = {
@@ -9,6 +10,28 @@ const routeMeta: Record<string, { title: string; eyebrow: string }> = {
   '/system': { title: 'Sistem', eyebrow: 'Saha telemetrisi' },
   '/settings': { title: 'Ayarlar', eyebrow: 'Kalibrasyon' },
 };
+
+function HeaderSidebarOpenButton() {
+  const { isMobile, state, toggleSidebar } = useSidebar();
+
+  if (!isMobile && state === 'expanded') {
+    return null;
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={toggleSidebar}
+      className="h-11 w-11 rounded-[1.25rem] border border-border/70 bg-card/78 shadow-[0_16px_35px_-28px_rgba(7,130,95,0.65)] hover:bg-card"
+      aria-label="Sidebari ac"
+      title="Sidebari ac"
+    >
+      <PanelLeft className="h-4 w-4" />
+    </Button>
+  );
+}
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -22,6 +45,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="relative flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-10 border-b border-border/60 bg-background/78 backdrop-blur-xl">
             <div className="flex min-h-20 items-center gap-3 px-4 py-3 md:px-6">
+              <HeaderSidebarOpenButton />
               <AicoLogo compact className="hidden w-11 sm:block" />
               <div className="min-w-0">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-primary/80">{meta.eyebrow}</p>
