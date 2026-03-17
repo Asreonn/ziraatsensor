@@ -1,6 +1,7 @@
 export type SensorId = 'ph' | 'ec' | 'do' | 'waterTemp' | 'airTemp' | 'humidity';
 export type SensorStatus = 'healthy' | 'warning' | 'critical' | 'offline';
-export type AnomalyType = 'spike' | 'threshold' | 'deviation';
+export type SensorConnectionIssue = 'none' | 'missed_once' | 'faulty';
+export type AnomalyType = 'spike' | 'threshold' | 'deviation' | 'connection';
 export type AnomalySeverity = 'low' | 'medium' | 'high';
 export type TrendDirection = 'rising' | 'falling' | 'stable';
 export type DataMode = 'mock' | 'live';
@@ -32,6 +33,7 @@ export interface SensorData {
   history: SensorReading[];
   delta: number;
   trend: TrendDirection;
+  connectionIssue: SensorConnectionIssue;
   hasUnreadAnomaly: boolean;
 }
 

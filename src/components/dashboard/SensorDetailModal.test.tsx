@@ -67,6 +67,7 @@ const sensor: SensorData = {
   ],
   delta: 1.7,
   trend: 'rising',
+  connectionIssue: 'none',
   hasUnreadAnomaly: true,
 };
 

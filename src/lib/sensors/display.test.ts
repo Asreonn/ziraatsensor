@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatSensorValue, hasSensorReading, hasSystemStatusData } from './display';
+import {
+  formatSensorValue,
+  getSensorConnectionMessage,
+  getSensorDisplayStatus,
+  getSensorStatusLabel,
+  hasSensorReading,
+  hasSystemStatusData,
+} from './display';
 
 describe('sensor display helpers', () => {
   it('treats epoch offline readings as missing live data', () => {
@@ -39,5 +46,20 @@ describe('sensor display helpers', () => {
         humidity: false,
       },
     })).toBe(false);
+  });
+
+  it('maps missing updates to warning and faulty labels', () => {
+    expect(getSensorConnectionMessage('missed_once')).toContain('veri alinamadi');
+    expect(getSensorConnectionMessage('faulty')).toContain('Sensor bozuk');
+
+    expect(getSensorStatusLabel({
+      current: { value: 0, timestamp: new Date(), status: 'healthy' },
+      connectionIssue: 'missed_once',
+    })).toBe('Veri alinmadi');
+
+    expect(getSensorDisplayStatus({
+      current: { value: 0, timestamp: new Date(), status: 'healthy' },
+      connectionIssue: 'faulty',
+    })).toBe('critical');
   });
 });

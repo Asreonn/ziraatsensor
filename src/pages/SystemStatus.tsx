@@ -1,5 +1,5 @@
 import { useSensorData } from '@/lib/sensors/DataProvider';
-import { hasSystemStatusData } from '@/lib/sensors/display';
+import { getSensorConnectionMessage, hasSystemStatusData } from '@/lib/sensors/display';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { InfoHint } from '@/components/ui/info-hint';
 import { SENSOR_IDS, SENSOR_CONFIGS } from '@/lib/sensors/types';
@@ -91,6 +91,11 @@ export default function SystemStatus() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {SENSOR_IDS.map(id => {
+                  const sensor = pool.sensors[id];
+                  const connectionMessage = getSensorConnectionMessage(sensor.connectionIssue);
+                  const isFaulty = sensor.connectionIssue === 'faulty';
+                  const missedOnce = sensor.connectionIssue === 'missed_once';
+                  const isConnected = !connectionMessage && pool.systemInfo.sensorConnections[id];
                   return (
                     <div
                       key={id}
@@ -100,13 +105,13 @@ export default function SystemStatus() {
                       <div className="flex items-center gap-2">
                         <div className={cn(
                           'h-2.5 w-2.5 rounded-full',
-                          pool.systemInfo.sensorConnections[id] ? 'bg-status-healthy' : 'bg-status-critical'
+                          isFaulty ? 'bg-status-critical' : missedOnce ? 'bg-status-warning' : isConnected ? 'bg-status-healthy' : 'bg-status-critical'
                         )} />
                         <span className={cn(
                           'text-xs font-semibold uppercase tracking-[0.14em]',
-                          pool.systemInfo.sensorConnections[id] ? 'text-status-healthy' : 'text-status-critical'
+                          isFaulty ? 'text-status-critical' : missedOnce ? 'text-status-warning' : isConnected ? 'text-status-healthy' : 'text-status-critical'
                         )}>
-                          {pool.systemInfo.sensorConnections[id] ? 'Online' : 'Offline'}
+                          {isFaulty ? 'Sensor bozuk' : missedOnce ? 'Veri alinmadi' : isConnected ? 'Online' : 'Offline'}
                         </span>
                       </div>
                     </div>

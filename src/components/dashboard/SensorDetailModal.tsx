@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { formatSensorValue, hasSensorReading } from '@/lib/sensors/display';
+import { formatSensorValue, getSensorConnectionMessage, getSensorDisplayStatus, hasSensorReading } from '@/lib/sensors/display';
 import { SensorData, Anomaly, SensorId } from '@/lib/sensors/types';
 import { AnomalyFeed } from './AnomalyFeed';
 import { TrendingUp, TrendingDown, Minus, ArrowDown, ArrowUp, Activity } from 'lucide-react';
@@ -65,12 +65,14 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
     time: r.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
   }));
   const hasReading = hasSensorReading(current);
+  const connectionMessage = getSensorConnectionMessage(sensor.connectionIssue);
+  const displayStatus = getSensorDisplayStatus(sensor);
 
   const sensorAnomalies = anomalies.filter(a => a.sensorId === config.id);
 
-  const statusColor = current.status === 'critical'
+  const statusColor = displayStatus === 'critical'
     ? 'hsl(0, 72%, 51%)'
-    : current.status === 'warning'
+    : displayStatus === 'warning'
     ? 'hsl(38, 92%, 50%)'
     : 'hsl(220, 70%, 50%)';
 
@@ -82,6 +84,14 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
             <div>
               <DialogTitle className="font-display text-xl font-semibold">{config.label}</DialogTitle>
               <p className="mt-0.5 text-xs uppercase tracking-[0.18em] text-muted-foreground">{poolName} · {config.unit || 'unitless'}</p>
+              {connectionMessage && (
+                <p className={cn(
+                  'mt-2 text-xs font-medium',
+                  sensor.connectionIssue === 'faulty' ? 'text-status-critical' : 'text-status-warning',
+                )}>
+                  {connectionMessage}
+                </p>
+              )}
             </div>
             <div className="text-right">
               <span className="font-display text-3xl font-semibold tabular-nums text-foreground">

@@ -1,5 +1,11 @@
 import { SensorData } from '@/lib/sensors/types';
-import { formatSensorValue, hasSensorReading } from '@/lib/sensors/display';
+import {
+  formatSensorValue,
+  getSensorConnectionMessage,
+  getSensorDisplayStatus,
+  getSensorStatusLabel,
+  hasSensorReading,
+} from '@/lib/sensors/display';
 import { SparklineChart } from './SparklineChart';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
@@ -9,13 +15,6 @@ const statusColors: Record<string, string> = {
   warning: 'bg-status-warning',
   critical: 'bg-status-critical',
   offline: 'bg-status-offline',
-};
-
-const statusLabels: Record<string, string> = {
-  healthy: 'Normal',
-  warning: 'Warning',
-  critical: 'Critical',
-  offline: 'Offline',
 };
 
 const sparkColors: Record<string, string> = {
@@ -41,6 +40,9 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
   const { config, current, history, delta, trend, hasUnreadAnomaly } = data;
   const TrendIcon = trend === 'rising' ? TrendingUp : trend === 'falling' ? TrendingDown : Minus;
   const hasReading = hasSensorReading(current);
+  const displayStatus = getSensorDisplayStatus(data);
+  const statusLabel = getSensorStatusLabel(data);
+  const connectionMessage = getSensorConnectionMessage(data.connectionIssue);
 
   return (
     <div
@@ -61,19 +63,19 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
 
       <div className="relative flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className={cn('h-2.5 w-2.5 rounded-full', statusColors[current.status])} />
+          <div className={cn('h-2.5 w-2.5 rounded-full', statusColors[displayStatus])} />
           <span className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
             {config.label}
           </span>
         </div>
         <span className={cn(
           'rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]',
-          current.status === 'healthy' && 'text-status-healthy bg-status-healthy/10',
-          current.status === 'warning' && 'text-status-warning bg-status-warning/10',
-          current.status === 'critical' && 'text-status-critical bg-status-critical/10',
-          current.status === 'offline' && 'text-muted-foreground bg-muted',
+          displayStatus === 'healthy' && 'text-status-healthy bg-status-healthy/10',
+          displayStatus === 'warning' && 'text-status-warning bg-status-warning/10',
+          displayStatus === 'critical' && 'text-status-critical bg-status-critical/10',
+          displayStatus === 'offline' && 'text-muted-foreground bg-muted',
         )}>
-          {statusLabels[current.status]}
+          {statusLabel}
         </span>
       </div>
 
@@ -87,7 +89,14 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
       </div>
 
       <div className="relative flex items-center gap-2 mb-4">
-        {hasReading ? (
+        {connectionMessage ? (
+          <span className={cn(
+            'text-xs font-medium',
+            data.connectionIssue === 'faulty' ? 'text-status-critical' : 'text-status-warning',
+          )}>
+            {connectionMessage}
+          </span>
+        ) : hasReading ? (
           <>
             <TrendIcon className={cn(
               'h-3.5 w-3.5',
@@ -109,7 +118,7 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
 
       <div className="relative mb-3 rounded-[1.25rem] border border-border/65 bg-white/72 p-2">
         {hasReading ? (
-          <SparklineChart data={history.slice(-30)} color={sparkColors[current.status]} height={36} />
+          <SparklineChart data={history.slice(-30)} color={sparkColors[displayStatus]} height={36} />
         ) : (
           <div className="flex h-9 items-center justify-center text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
             Veri yok

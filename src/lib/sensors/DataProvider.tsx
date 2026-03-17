@@ -9,6 +9,7 @@ import {
   PoolData,
   SENSOR_CONFIGS,
   SENSOR_IDS,
+  SensorConnectionIssue,
   SensorData,
   SensorId,
   SensorReading,
@@ -27,6 +28,18 @@ import {
 const DEFAULT_REFRESH_INTERVAL = 3000;
 const HISTORY_POINTS = 120;
 const READINGS_LIMIT = 6000;
+
+interface LiveSensorSyncState {
+  lastObservedCycleMs: number;
+  lastSensorTimestampMs: number;
+  missedCycles: number;
+}
+
+function getConnectionIssue(missedCycles: number): SensorConnectionIssue {
+  if (missedCycles >= 2) return 'faulty';
+  if (missedCycles === 1) return 'missed_once';
+  return 'none';
+}
 
 interface SensorContextValue {
   pools: Record<string, PoolData>;
@@ -93,7 +106,10 @@ function mapPoolRowToConfig(row: PoolRow): PoolConfig {
 }
 
 function getOverallStatus(sensors: Record<SensorId, SensorData>) {
+  const issues = SENSOR_IDS.map(id => sensors[id].connectionIssue);
   const statuses = SENSOR_IDS.map(id => sensors[id].current.status);
+  if (issues.includes('faulty')) return 'critical' as const;
+  if (issues.includes('missed_once')) return 'warning' as const;
   if (statuses.every(status => status === 'offline')) return 'offline' as const;
   if (statuses.includes('critical')) return 'critical' as const;
   if (statuses.includes('warning')) return 'warning' as const;
@@ -113,6 +129,7 @@ function buildMockPoolSensors(poolConfig: PoolConfig): Record<SensorId, SensorDa
       history,
       delta: calculateDelta(history),
       trend: calculateTrend(history),
+      connectionIssue: 'none',
       hasUnreadAnomaly: false,
     };
   });
@@ -148,6 +165,7 @@ function buildEmptyLivePools(poolConfigs: PoolConfig[]): Record<string, PoolData
         history: [reading],
         delta: 0,
         trend: 'stable',
+        connectionIssue: 'none',
         hasUnreadAnomaly: false,
       };
     });
@@ -190,6 +208,7 @@ function tickMockPools(prev: Record<string, PoolData>, poolConfigs: PoolConfig[]
         history,
         delta: calculateDelta(history),
         trend: calculateTrend(history),
+        connectionIssue: 'none',
         hasUnreadAnomaly: hadUnread || detected.length > 0,
       };
 
@@ -353,7 +372,117 @@ function buildReadingGroups(rows: SensorReadingRow[]) {
   return grouped;
 }
 
-async function fetchLivePools(poolConfigs: PoolConfig[], readState: Record<string, string[]>): Promise<Record<string, PoolData>> {
+function getLatestReadingTimestamp(history: SensorReading[]): number {
+  const latest = history[history.length - 1];
+  return latest?.timestamp.getTime() ?? 0;
+}
+
+function buildConnectionAnomaly(
+  poolId: string,
+  sensorId: SensorId,
+  issue: SensorConnectionIssue,
+  missedCycles: number,
+  timestampMs: number,
+): Anomaly | null {
+  if (issue === 'none' || timestampMs <= 0) return null;
+
+  const config = SENSOR_CONFIGS[sensorId];
+  const timestamp = new Date(timestampMs);
+
+  return {
+    id: buildLiveAnomalyId(poolId, sensorId, 'connection', timestamp, `${issue}-${missedCycles}`),
+    poolId,
+    sensorId,
+    sensorLabel: config.label,
+    type: 'connection',
+    severity: issue === 'faulty' ? 'high' : 'medium',
+    value: missedCycles,
+    threshold: issue === 'faulty' ? 2 : 1,
+    timestamp,
+    message: issue === 'faulty'
+      ? `${config.label} ust uste ${missedCycles} update kacirdi. Sensor bozuk olabilir.`
+      : `${config.label} son update icin veri gondermedi.`,
+    read: false,
+  };
+}
+
+function evaluateLiveSensorIssue(
+  key: string,
+  poolCycleMs: number,
+  latestSensorTimestampMs: number,
+  syncState: Record<string, LiveSensorSyncState>,
+) {
+  const previous = syncState[key] ?? {
+    lastObservedCycleMs: 0,
+    lastSensorTimestampMs: 0,
+    missedCycles: 0,
+  };
+
+  if (poolCycleMs <= 0) {
+    syncState[key] = {
+      ...previous,
+      lastSensorTimestampMs: Math.max(previous.lastSensorTimestampMs, latestSensorTimestampMs),
+      missedCycles: latestSensorTimestampMs > previous.lastSensorTimestampMs ? 0 : previous.missedCycles,
+    };
+
+    return {
+      issue: getConnectionIssue(syncState[key].missedCycles),
+      missedCycles: syncState[key].missedCycles,
+    };
+  }
+
+  if (previous.lastObservedCycleMs === 0) {
+    const missedCycles = latestSensorTimestampMs > 0 ? 0 : 1;
+    syncState[key] = {
+      lastObservedCycleMs: poolCycleMs,
+      lastSensorTimestampMs: latestSensorTimestampMs,
+      missedCycles,
+    };
+
+    return {
+      issue: getConnectionIssue(missedCycles),
+      missedCycles,
+    };
+  }
+
+  if (latestSensorTimestampMs > previous.lastSensorTimestampMs) {
+    syncState[key] = {
+      lastObservedCycleMs: Math.max(poolCycleMs, previous.lastObservedCycleMs),
+      lastSensorTimestampMs: latestSensorTimestampMs,
+      missedCycles: 0,
+    };
+
+    return {
+      issue: 'none' as const,
+      missedCycles: 0,
+    };
+  }
+
+  if (poolCycleMs > previous.lastObservedCycleMs) {
+    const missedCycles = previous.missedCycles + 1;
+    syncState[key] = {
+      lastObservedCycleMs: poolCycleMs,
+      lastSensorTimestampMs: latestSensorTimestampMs,
+      missedCycles,
+    };
+
+    return {
+      issue: getConnectionIssue(missedCycles),
+      missedCycles,
+    };
+  }
+
+  return {
+    issue: getConnectionIssue(previous.missedCycles),
+    missedCycles: previous.missedCycles,
+  };
+}
+
+async function fetchLivePools(
+  poolConfigs: PoolConfig[],
+  readState: Record<string, string[]>,
+  syncState: Record<string, LiveSensorSyncState>,
+): Promise<Record<string, PoolData>> {
   if (!supabase || poolConfigs.length === 0) return {};
 
   const poolIds = poolConfigs.map(pool => pool.id);
@@ -380,14 +509,35 @@ async function fetchLivePools(poolConfigs: PoolConfig[], readState: Record<strin
   poolConfigs.forEach(poolConfig => {
     const sensors = {} as Record<SensorId, SensorData>;
     let anomalies: Anomaly[] = [];
+    const poolStatus = statusMap.get(poolConfig.id);
+    const latestSensorTimestamps = SENSOR_IDS.map(sensorId => {
+      const key = `${poolConfig.id}:${sensorId}`;
+      return getLatestReadingTimestamp(groupedReadings[key] ?? []);
+    });
+    const poolCycleMs = Math.max(
+      poolStatus ? new Date(poolStatus.last_sync).getTime() : 0,
+      ...latestSensorTimestamps,
+    );
 
     SENSOR_IDS.forEach(sensorId => {
       const key = `${poolConfig.id}:${sensorId}`;
       const history = groupedReadings[key] ?? [createOfflineReading(sensorId)];
+      const latestSensorTimestampMs = getLatestReadingTimestamp(history);
+      const connectionState = evaluateLiveSensorIssue(key, poolCycleMs, latestSensorTimestampMs, syncState);
       const derived = deriveAnomaliesFromHistory(poolConfig.id, sensorId, history).map(anomaly => ({
         ...anomaly,
         read: (readState[key] ?? []).includes(anomaly.id),
       }));
+      const connectionAnomaly = buildConnectionAnomaly(
+        poolConfig.id,
+        sensorId,
+        connectionState.issue,
+        connectionState.missedCycles,
+        poolCycleMs || latestSensorTimestampMs,
+      );
+      const sensorAnomalies = connectionAnomaly
+        ? [...derived, { ...connectionAnomaly, read: (readState[key] ?? []).includes(connectionAnomaly.id) }]
+        : derived;
 
       sensors[sensorId] = {
         config: SENSOR_CONFIGS[sensorId],
@@ -395,10 +545,11 @@ async function fetchLivePools(poolConfigs: PoolConfig[], readState: Record<strin
         history,
         delta: calculateDelta(history),
         trend: calculateTrend(history),
-        hasUnreadAnomaly: derived.some(anomaly => !anomaly.read),
+        connectionIssue: connectionState.issue,
+        hasUnreadAnomaly: sensorAnomalies.some(anomaly => !anomaly.read),
       };
 
-      anomalies = [...anomalies, ...derived];
+      anomalies = [...anomalies, ...sensorAnomalies];
     });
 
     next[poolConfig.id] = {
@@ -408,7 +559,7 @@ async function fetchLivePools(poolConfigs: PoolConfig[], readState: Record<strin
         .sort((left, right) => right.timestamp.getTime() - left.timestamp.getTime())
         .slice(0, 200),
       overallStatus: getOverallStatus(sensors),
-      systemInfo: toSystemInfo(statusMap.get(poolConfig.id)),
+      systemInfo: toSystemInfo(poolStatus),
     };
   });
 
@@ -425,6 +576,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const readAnomalyIdsRef = useRef<Record<string, string[]>>({});
+  const liveSensorSyncStateRef = useRef<Record<string, LiveSensorSyncState>>({});
 
   const persistPreferences = useCallback(async (patch: { use_mock_data?: boolean; refresh_interval_ms?: number }) => {
     if (!supabase || !user) return;
@@ -509,6 +661,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   const setDataMode = useCallback(async (mode: DataMode) => {
     setDataModeState(mode);
+    liveSensorSyncStateRef.current = {};
     setLoading(true);
     try {
       await persistPreferences({ use_mock_data: mode === 'mock' });
@@ -567,6 +720,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           setLoading(false);
           setError(null);
           readAnomalyIdsRef.current = {};
+          liveSensorSyncStateRef.current = {};
         }
         return;
       }
@@ -575,6 +729,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setWorkspaceReady(false);
       setError(null);
       readAnomalyIdsRef.current = {};
+      liveSensorSyncStateRef.current = {};
 
       try {
         const { error: bootstrapError } = await supabase.rpc('bootstrap_user_workspace');
@@ -646,7 +801,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const snapshot = await fetchLivePools(poolConfigs, readAnomalyIdsRef.current);
+        const snapshot = await fetchLivePools(poolConfigs, readAnomalyIdsRef.current, liveSensorSyncStateRef.current);
         if (cancelled) return;
         setPools(snapshot);
         setError(null);

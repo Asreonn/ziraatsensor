@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useSensorData } from '@/lib/sensors/DataProvider';
-import { formatSensorValue } from '@/lib/sensors/display';
+import { formatSensorValue, getSensorDisplayStatus } from '@/lib/sensors/display';
 import { SensorCard } from '@/components/dashboard/SensorCard';
 import { SensorDetailModal } from '@/components/dashboard/SensorDetailModal';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
@@ -244,14 +244,15 @@ export default function Overview() {
                       <div className="mt-5 grid grid-cols-3 gap-2">
                         {SENSOR_IDS.map(id => {
                           const s = pool.sensors[id];
+                          const displayStatus = getSensorDisplayStatus(s);
                           return (
                             <div key={id} className="rounded-[1rem] border border-border/65 bg-white/72 px-3 py-2">
                               <span className="block text-[9px] uppercase tracking-[0.24em] text-muted-foreground">{s.config.label}</span>
                               <span className={cn(
                                 'mt-2 block text-sm font-semibold tabular-nums',
-                                s.current.status === 'critical' && 'text-status-critical',
-                                s.current.status === 'warning' && 'text-status-warning',
-                                s.current.status === 'healthy' && 'text-foreground',
+                                displayStatus === 'critical' && 'text-status-critical',
+                                displayStatus === 'warning' && 'text-status-warning',
+                                displayStatus === 'healthy' && 'text-foreground',
                               )}>
                                 {formatSensorValue(s.current, s.config.id, s.config.id === 'ph' ? 1 : 0)}
                               </span>
