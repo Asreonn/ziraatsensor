@@ -95,11 +95,14 @@ function normalizeConnections(input: unknown, fallbackValue: boolean): Record<Se
   return connections;
 }
 
+const STALE_LOCATION_PLACEHOLDERS = new Set(['Yeni kayit havuzu', 'Yeni kayıt havuzu']);
+
 function mapPoolRowToConfig(row: PoolRow): PoolConfig {
+  const rawLocation = (row.location ?? '').trim();
   return {
     id: row.id,
     name: row.name,
-    location: row.location,
+    location: STALE_LOCATION_PLACEHOLDERS.has(rawLocation) ? '' : rawLocation,
     sortOrder: row.sort_order,
     offsets: normalizeOffsets(row.sensor_offsets),
   };
@@ -248,9 +251,11 @@ function deriveAnomaliesFromHistory(poolId: string, sensorId: SensorId, history:
   for (let index = 1; index < history.length; index += 1) {
     const latest = history[index];
     const previous = history[index - 1];
+    const statusChanged = latest.status !== previous.status;
 
-    if (latest.status === 'critical') {
+    if (latest.status === 'critical' && statusChanged) {
       const isHigh = latest.value > config.criticalMax;
+      const limit = isHigh ? config.criticalMax : config.criticalMin;
       anomalies.push({
         id: buildLiveAnomalyId(poolId, sensorId, 'threshold', latest.timestamp, `critical-${isHigh ? 'high' : 'low'}`),
         poolId,
@@ -259,13 +264,16 @@ function deriveAnomaliesFromHistory(poolId: string, sensorId: SensorId, history:
         type: 'threshold',
         severity: 'high',
         value: latest.value,
-        threshold: isHigh ? config.criticalMax : config.criticalMin,
+        threshold: limit,
         timestamp: latest.timestamp,
-        message: `${config.label} ${isHigh ? 'exceeded' : 'below'} critical threshold: ${latest.value}${config.unit}`,
+        message: isHigh
+          ? `Kritik yüksek: ${latest.value}${config.unit} (sınır ${limit}${config.unit}).`
+          : `Kritik düşük: ${latest.value}${config.unit} (sınır ${limit}${config.unit}).`,
         read: false,
       });
-    } else if (latest.status === 'warning') {
+    } else if (latest.status === 'warning' && statusChanged) {
       const isHigh = latest.value > config.warningMax;
+      const limit = isHigh ? config.warningMax : config.warningMin;
       anomalies.push({
         id: buildLiveAnomalyId(poolId, sensorId, 'threshold', latest.timestamp, `warning-${isHigh ? 'high' : 'low'}`),
         poolId,
@@ -274,9 +282,11 @@ function deriveAnomaliesFromHistory(poolId: string, sensorId: SensorId, history:
         type: 'threshold',
         severity: 'medium',
         value: latest.value,
-        threshold: isHigh ? config.warningMax : config.warningMin,
+        threshold: limit,
         timestamp: latest.timestamp,
-        message: `${config.label} ${isHigh ? 'above' : 'below'} warning range: ${latest.value}${config.unit}`,
+        message: isHigh
+          ? `Uyarı: değer ${latest.value}${config.unit}, ideal üst sınır ${limit}${config.unit}.`
+          : `Uyarı: değer ${latest.value}${config.unit}, ideal alt sınır ${limit}${config.unit}.`,
         read: false,
       });
     }
@@ -294,7 +304,7 @@ function deriveAnomaliesFromHistory(poolId: string, sensorId: SensorId, history:
         value: latest.value,
         threshold: spikeThreshold,
         timestamp: latest.timestamp,
-        message: `Rapid ${latest.value > previous.value ? 'increase' : 'decrease'} in ${config.label}: Δ${change.toFixed(2)}${config.unit}`,
+        message: `Ani ${latest.value > previous.value ? 'yükseliş' : 'düşüş'}: ${change.toFixed(2)}${config.unit} değişim (önceki ${previous.value}${config.unit} → şimdi ${latest.value}${config.unit}).`,
         read: false,
       });
     }
@@ -314,7 +324,7 @@ function deriveAnomaliesFromHistory(poolId: string, sensorId: SensorId, history:
           value: latest.value,
           threshold: average,
           timestamp: latest.timestamp,
-          message: `${config.label} deviating from average (${average.toFixed(2)}): current ${latest.value}${config.unit}`,
+          message: `Ortalamadan sapma: değer ${latest.value}${config.unit}, son 20 okumanın ortalaması ${average.toFixed(2)}${config.unit}.`,
           read: false,
         });
       }

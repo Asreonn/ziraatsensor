@@ -1,15 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useSensorData } from '@/lib/sensors/DataProvider';
 import { formatSensorValue, getSensorDisplayStatus } from '@/lib/sensors/display';
 import { SensorCard } from '@/components/dashboard/SensorCard';
 import { SensorDetailModal } from '@/components/dashboard/SensorDetailModal';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { InfoHint } from '@/components/ui/info-hint';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { SENSOR_IDS, SensorId } from '@/lib/sensors/types';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, ArrowLeft, ChevronRight, Copy, Plus } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Bell, ChevronRight } from 'lucide-react';
+import { AnomalyFeed } from '@/components/dashboard/AnomalyFeed';
+import { PoolExportPanel } from '@/components/dashboard/PoolExportPanel';
 
 const statusDot: Record<string, string> = {
   healthy: 'bg-status-healthy',
@@ -19,19 +18,16 @@ const statusDot: Record<string, string> = {
 };
 
 const statusLabel: Record<string, string> = {
-  healthy: 'Stable',
-  warning: 'Warning',
-  critical: 'Critical',
-  offline: 'Offline',
+  healthy: 'Stabil',
+  warning: 'Uyarı',
+  critical: 'Kritik',
+  offline: 'Çevrimdışı',
 };
 
 export default function Overview() {
-  const { pools, loading, error, markAnomaliesRead, createPool } = useSensorData();
+  const { pools, loading, error, markAnomaliesRead } = useSensorData();
   const [selectedPool, setSelectedPool] = useState<string | null>(null);
   const [modalSensor, setModalSensor] = useState<SensorId | null>(null);
-  const [newPoolName, setNewPoolName] = useState('');
-  const [newPoolLocation, setNewPoolLocation] = useState('');
-  const [creatingPool, setCreatingPool] = useState(false);
   const [copiedPoolId, setCopiedPoolId] = useState<string | null>(null);
 
   const poolList = Object.values(pools).sort((left, right) => left.config.sortOrder - right.config.sortOrder);
@@ -61,50 +57,33 @@ export default function Overview() {
     }
   };
 
-  const handleCreatePool = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setCreatingPool(true);
-
-    try {
-      const createdPoolId = await createPool({
-        name: newPoolName,
-        location: newPoolLocation,
-      });
-
-      setNewPoolName('');
-      setNewPoolLocation('');
-      setSelectedPool(createdPoolId);
-    } finally {
-      setCreatingPool(false);
-    }
-  };
-
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {!selectedPool && (
           <>
-            <section className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(237,252,243,0.92))] p-5 shadow-[0_30px_90px_-50px_rgba(7,130,95,0.65)]">
-              <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(13,187,108,0.18),transparent_62%)]" />
-              <div className="relative flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground md:text-[2rem]">Havuzlar</h2>
-                    <InfoHint label="Kartlara tiklayarak havuz icine girer, sensor kartina tiklayarak detay modalini acarsin." />
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">AICO izleme yuzu</p>
-                </div>
+            <section className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-card p-4 md:p-5 shadow-sm">
+              <div className="relative flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-display text-xl font-semibold tracking-tight text-foreground md:text-2xl">Havuzlar</h2>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {[
                     { label: 'Havuz', value: `${totalPools}` },
-                    { label: 'Sensor', value: `${totalSensors}` },
-                    { label: 'Uyari', value: `${totalAnomalies}` },
+                    { label: 'Sensör', value: `${totalSensors}` },
+                    { label: 'Uyarı', value: `${totalAnomalies}`, accent: totalAnomalies > 0 },
                     { label: 'Stabil', value: `${healthyPools}` },
                   ].map(stat => (
-                    <div key={stat.label} className="rounded-full border border-border/70 bg-white/76 px-3 py-2">
-                      <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{stat.label}</span>
-                      <span className="ml-2 font-display text-lg font-semibold text-foreground">{stat.value}</span>
+                    <div
+                      key={stat.label}
+                      className={cn(
+                        'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs',
+                        stat.accent
+                          ? 'border-status-warning/40 bg-status-warning/12 text-status-warning'
+                          : 'border-border/70 bg-muted/40 text-muted-foreground',
+                      )}
+                    >
+                      <span className="text-[10px] uppercase tracking-[0.14em]">{stat.label}</span>
+                      <span className="font-display text-sm font-semibold tabular-nums text-foreground">{stat.value}</span>
                     </div>
                   ))}
                 </div>
@@ -118,81 +97,16 @@ export default function Overview() {
             </section>
 
             {loading && poolList.length === 0 && (
-              <div className="rounded-[1.5rem] border border-border/70 bg-card/88 px-4 py-8 text-center text-sm text-muted-foreground">
-                Havuz verileri yukleniyor...
+              <div className="rounded-[1.5rem] border border-border/70 bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+                Havuz verileri yükleniyor...
               </div>
             )}
 
             {!loading && poolList.length === 0 && (
-              <div className="rounded-[1.5rem] border border-border/70 bg-card/88 px-4 py-8 text-center text-sm text-muted-foreground">
-                Bu kullanici icin pool kaydi bulunamadi.
+              <div className="rounded-[1.5rem] border border-border/70 bg-card px-4 py-8 text-center text-sm text-muted-foreground">
+                Bu kullanıcı için havuz kaydı bulunamadı.
               </div>
             )}
-
-            <section className="rounded-[1.8rem] border border-border/70 bg-card/88 p-5 shadow-[0_26px_70px_-52px_rgba(7,130,95,0.65)]">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-display text-xl font-semibold text-foreground">ESP pool ID'leri</h3>
-                    <InfoHint label="ESP her zaman ilgili pool UUID'sine veri gondermeli. Kayit olan her hesap icin ilk pool otomatik acilir." />
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">Bu ID'leri cihaza sabit yazabilir veya sonradan yeni pool olusturabilirsiniz.</p>
-                </div>
-
-                <form className="flex w-full flex-col gap-2 md:w-auto md:min-w-[420px]" onSubmit={handleCreatePool}>
-                  <div className="grid gap-2 sm:grid-cols-[1.2fr_1fr_auto]">
-                    <Input
-                      placeholder="Yeni pool adi"
-                      value={newPoolName}
-                      onChange={event => setNewPoolName(event.target.value)}
-                    />
-                    <Input
-                      placeholder="Konum"
-                      value={newPoolLocation}
-                      onChange={event => setNewPoolLocation(event.target.value)}
-                    />
-                    <Button className="gap-2" disabled={creatingPool} type="submit">
-                      <Plus className="h-4 w-4" />
-                      {creatingPool ? 'Ekleniyor' : 'Pool ekle'}
-                    </Button>
-                  </div>
-                </form>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                {poolList.map(pool => (
-                  <div
-                    key={pool.config.id}
-                    className="flex flex-col gap-3 rounded-[1.3rem] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(242,252,246,0.9))] px-4 py-3 md:flex-row md:items-center"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-display text-lg font-semibold text-foreground">{pool.config.name}</span>
-                        <span className="text-sm text-muted-foreground">{pool.config.location}</span>
-                      </div>
-                      <div className="mt-2 break-all rounded-xl border border-border/70 bg-white/80 px-3 py-2 font-mono text-xs text-foreground">
-                        {pool.config.id}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="gap-2"
-                        onClick={() => void handleCopyPoolId(pool.config.id)}
-                      >
-                        <Copy className="h-4 w-4" />
-                        {copiedPoolId === pool.config.id ? 'Kopyalandi' : 'ID kopyala'}
-                      </Button>
-                      <Button type="button" onClick={() => setSelectedPool(pool.config.id)}>
-                        Ac
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {poolList.map(pool => {
@@ -204,28 +118,30 @@ export default function Overview() {
                     key={pool.config.id}
                     onClick={() => setSelectedPool(pool.config.id)}
                     className={cn(
-                      'group relative overflow-hidden rounded-[1.8rem] border p-5 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_30px_70px_-45px_rgba(7,130,95,0.7)]',
-                      'bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(242,252,246,0.92))]',
-                      hasCritical ? 'border-status-critical/35 ring-1 ring-status-critical/20' : 'border-border/70',
+                      'group relative overflow-hidden rounded-[1.8rem] border p-4 md:p-5 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md',
+                      'bg-card',
+                      hasCritical ? 'border-status-critical/35 ring-1 ring-status-critical/15' : 'border-border/70',
                     )}
                   >
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(13,187,108,0.16),transparent_70%)]" />
-                    {unread > 0 && (
-                      <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-status-warning/14 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-status-warning">
-                        <AlertTriangle className="h-3 w-3" />
-                        {unread} uyari
-                      </div>
-                    )}
-
                     <div className="relative">
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] uppercase tracking-[0.28em] text-primary/75">Habitat</p>
+                        <div className="min-w-0">
+                          <p className="text-[11px] uppercase tracking-[0.28em] text-primary/75">Havuz</p>
                           <h3 className="font-display mt-2 text-2xl font-semibold text-foreground">{pool.config.name}</h3>
-                          <p className="mt-1 text-sm text-muted-foreground">{pool.config.location}</p>
+                          {pool.config.location && (
+                            <p className="mt-1 text-sm text-muted-foreground">{pool.config.location}</p>
+                          )}
                         </div>
-                        <div className="mt-1 rounded-full border border-border/80 bg-white/80 p-2 text-muted-foreground transition-colors group-hover:text-primary">
-                          <ChevronRight className="h-4 w-4" />
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          {unread > 0 && (
+                            <div className="flex items-center gap-1 rounded-full bg-status-warning/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-status-warning">
+                              <AlertTriangle className="h-3 w-3" />
+                              {unread}
+                            </div>
+                          )}
+                          <div className="rounded-full border border-border/80 bg-muted/40 p-2 text-muted-foreground transition-colors group-hover:text-primary">
+                            <ChevronRight className="h-4 w-4" />
+                          </div>
                         </div>
                       </div>
 
@@ -246,15 +162,21 @@ export default function Overview() {
                           const s = pool.sensors[id];
                           const displayStatus = getSensorDisplayStatus(s);
                           return (
-                            <div key={id} className="rounded-[1rem] border border-border/65 bg-white/72 px-3 py-2">
-                              <span className="block text-[9px] uppercase tracking-[0.24em] text-muted-foreground">{s.config.label}</span>
+                            <div className={cn(
+                              'rounded-[1rem] border px-2.5 py-1.5',
+                              displayStatus === 'offline'
+                                ? 'border-dashed border-border/60 bg-muted/20'
+                                : 'border-border/65 bg-muted/30',
+                            )} key={id}>
+                              <span className="block text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{s.config.label}</span>
                               <span className={cn(
                                 'mt-2 block text-sm font-semibold tabular-nums',
                                 displayStatus === 'critical' && 'text-status-critical',
                                 displayStatus === 'warning' && 'text-status-warning',
                                 displayStatus === 'healthy' && 'text-foreground',
+                                displayStatus === 'offline' && 'text-muted-foreground/70',
                               )}>
-                                {formatSensorValue(s.current, s.config.id, s.config.id === 'ph' ? 1 : 0)}
+                                {displayStatus === 'offline' ? '—' : formatSensorValue(s.current, s.config.id, s.config.id === 'ph' ? 1 : 0)}
                               </span>
                             </div>
                           );
@@ -265,39 +187,59 @@ export default function Overview() {
                 );
               })}
             </div>
+
           </>
         )}
 
         {selectedPool && openPool && (
           <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2 rounded-[1.5rem] border border-border/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(234,250,239,0.92))] px-4 py-3 shadow-[0_26px_70px_-52px_rgba(7,130,95,0.75)]">
-              <button
-                onClick={() => setSelectedPool(null)}
-                className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-white/76 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Tum havuzlar
-              </button>
-
-              <div className={cn('ml-1 h-2.5 w-2.5 rounded-full', statusDot[openPool.overallStatus])} />
-              <span className="font-display text-xl font-semibold text-foreground">{openPool.config.name}</span>
-              <span className="text-sm text-muted-foreground">{openPool.config.location}</span>
-              <InfoHint label="Bu satir secili havuzu gosterir. Asagidaki sensor kartlariyla detay modalina inebilirsin." />
-              <button
-                type="button"
-                onClick={() => void handleCopyPoolId(openPool.config.id)}
-                className="rounded-full border border-border/70 bg-white/76 px-3 py-1.5 font-mono text-[11px] text-foreground transition-colors hover:bg-white"
-              >
-                {copiedPoolId === openPool.config.id ? 'Kopyalandi' : openPool.config.id}
-              </button>
-
-              <div className="ml-auto flex flex-wrap gap-2">
-                <div className="rounded-full border border-border/70 bg-white/76 px-3 py-1.5 text-xs text-muted-foreground">
-                  Sensor <span className="ml-1 font-semibold text-foreground">{SENSOR_IDS.length}</span>
+            <div className="rounded-2xl border border-border/70 bg-card p-3 shadow-sm md:p-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedPool(null)}
+                  className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-muted/40 px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  title="Tüm havuzlar"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Tüm havuzlar</span>
+                </button>
+                <div className={cn('h-2.5 w-2.5 shrink-0 rounded-full', statusDot[openPool.overallStatus])} />
+                <span className="truncate font-display text-base font-semibold text-foreground md:text-lg">
+                  {openPool.config.name}
+                </span>
+                {openPool.config.location && (
+                  <span className="hidden truncate text-sm text-muted-foreground sm:inline">
+                    {openPool.config.location}
+                  </span>
+                )}
+                <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                  <span className="rounded-full bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground">
+                    <span className="font-semibold text-foreground">{SENSOR_IDS.length}</span>{' '}
+                    <span className="hidden sm:inline">sensör</span>
+                    <span className="sm:hidden">sns</span>
+                  </span>
+                  <span className={cn(
+                    'rounded-full px-2 py-0.5 text-[11px]',
+                    openPool.anomalies.filter(a => !a.read).length > 0
+                      ? 'bg-status-warning/15 text-status-warning'
+                      : 'bg-muted/40 text-muted-foreground',
+                  )}>
+                    <span className="font-semibold">{openPool.anomalies.filter(a => !a.read).length}</span>{' '}
+                    <span className="hidden sm:inline">uyarı</span>
+                    <span className="sm:hidden">uy</span>
+                  </span>
                 </div>
-                <div className="rounded-full border border-border/70 bg-white/76 px-3 py-1.5 text-xs text-muted-foreground">
-                  Uyari <span className="ml-1 font-semibold text-foreground">{openPool.anomalies.filter(a => !a.read).length}</span>
-                </div>
+              </div>
+
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleCopyPoolId(openPool.config.id)}
+                  className="min-w-0 flex-1 truncate rounded-md border border-border/60 bg-muted/30 px-2 py-1 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:bg-muted"
+                  title={copiedPoolId === openPool.config.id ? 'Kopyalandı' : 'Kimliği kopyala'}
+                >
+                  {copiedPoolId === openPool.config.id ? 'Kopyalandı' : openPool.config.id}
+                </button>
               </div>
             </div>
 
@@ -310,6 +252,23 @@ export default function Overview() {
                 />
               ))}
             </div>
+
+            <div className="flex justify-end">
+              <PoolExportPanel pool={openPool} />
+            </div>
+
+            <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <Bell className="h-4 w-4 text-primary" />
+                <h3 className="font-display text-base font-semibold text-foreground">Genel Uyarılar</h3>
+                {openPool.anomalies.length > 0 && (
+                  <span className="ml-auto rounded-full bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    {openPool.anomalies.length}
+                  </span>
+                )}
+              </div>
+              <AnomalyFeed anomalies={openPool.anomalies} limit={12} />
+            </section>
           </div>
         )}
       </div>

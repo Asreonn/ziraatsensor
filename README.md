@@ -46,6 +46,17 @@ supabase db push
 - `supabase/migrations`: tablo, RLS ve bootstrap SQL dosyalari
 - `public`: favicon ve statik marka varliklari
 
+## Vercel'e deploy
+
+1. GitHub'da yeni bir repo olusturup bu klasoru pushlayin.
+2. https://vercel.com/new uzerinden repoyu import edin (framework otomatik **Vite** olarak algilanir).
+3. Project Settings -> Environment Variables altinda ekleyin:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+4. Deploy edin. SPA fallback ve cache ayarlari `vercel.json` icinde tanimlidir.
+
+> `dist/`, `.env*`, `node_modules` ve `PRIVATE_ESP_SUPABASE_HANDOFF.md` `.gitignore` ile dislanmistir; service_role veya gercek anon key asla repoya gitmez.
+
 ## Notlar
 
 - Test modu rastgele veri uretir, reel mod Supabase tabanli pool verilerini okur.

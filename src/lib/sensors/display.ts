@@ -22,19 +22,21 @@ export function hasSystemStatusData(systemInfo: SystemInfo | null | undefined): 
 }
 
 export function getSensorDisplayStatus(sensor: Pick<SensorData, 'current' | 'connectionIssue'>): SensorStatus {
-  if (sensor.connectionIssue === 'faulty') return 'critical';
-  if (sensor.connectionIssue === 'missed_once') return 'warning';
+  if (sensor.connectionIssue === 'faulty') return 'offline';
+  if (sensor.connectionIssue === 'missed_once') return 'offline';
+  if (!hasSensorReading(sensor.current)) return 'offline';
   return sensor.current.status;
 }
 
 export function getSensorStatusLabel(sensor: Pick<SensorData, 'current' | 'connectionIssue'>): string {
-  if (sensor.connectionIssue === 'faulty') return 'Sensor bozuk';
-  if (sensor.connectionIssue === 'missed_once') return 'Veri alinmadi';
+  if (sensor.connectionIssue === 'faulty') return 'Veri yok';
+  if (sensor.connectionIssue === 'missed_once') return 'Veri bekleniyor';
+  if (!hasSensorReading(sensor.current)) return 'Veri yok';
   return sensorStatusLabels[getSensorDisplayStatus(sensor)];
 }
 
 export function getSensorConnectionMessage(connectionIssue: SensorConnectionIssue): string | null {
-  if (connectionIssue === 'faulty') return 'Ard arda 2 update kacti. Sensor bozuk olabilir.';
-  if (connectionIssue === 'missed_once') return 'Son update icin veri alinamadi.';
+  if (connectionIssue === 'faulty') return 'Bu sensorden veri akmiyor. ESP cihazinin baglantisini kontrol edin.';
+  if (connectionIssue === 'missed_once') return 'Son guncelleme icin veri alinmadi. Bir sonraki donguyu bekliyoruz.';
   return null;
 }

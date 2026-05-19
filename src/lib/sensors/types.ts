@@ -92,17 +92,17 @@ export const SENSOR_CONFIGS: Record<SensorId, SensorConfig> = {
     baseValue: 7.5, amplitude: 1.2, period: 360,
   },
   waterTemp: {
-    id: 'waterTemp', label: 'Water Temp', unit: '°C',
+    id: 'waterTemp', label: 'Su Sıcaklığı', unit: '°C',
     min: 0, max: 50, warningMin: 20, warningMax: 30, criticalMin: 15, criticalMax: 35,
     baseValue: 24.5, amplitude: 2.0, period: 600,
   },
   airTemp: {
-    id: 'airTemp', label: 'Air Temp', unit: '°C',
+    id: 'airTemp', label: 'Hava Sıcaklığı', unit: '°C',
     min: -10, max: 50, warningMin: 18, warningMax: 35, criticalMin: 10, criticalMax: 40,
     baseValue: 26.0, amplitude: 3.0, period: 720,
   },
   humidity: {
-    id: 'humidity', label: 'Humidity', unit: '%',
+    id: 'humidity', label: 'Nem', unit: '%',
     min: 0, max: 100, warningMin: 40, warningMax: 80, criticalMin: 20, criticalMax: 95,
     baseValue: 62, amplitude: 8, period: 540,
   },
@@ -114,7 +114,7 @@ export const POOL_CONFIGS: PoolConfig[] = [
   {
     id: 'pool-1',
     name: 'Pool-1',
-    location: 'Yeni kayit havuzu',
+    location: '',
     sortOrder: 1,
     offsets: { ph: 0, ec: 0, do: 0, waterTemp: 0, airTemp: 0, humidity: 0 },
   },

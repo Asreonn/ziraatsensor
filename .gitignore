@@ -11,6 +11,16 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Environment files (never commit real keys)
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel
+
+# Private handoff doc with service_role key
 PRIVATE_ESP_SUPABASE_HANDOFF.md
 
 # Editor directories and files

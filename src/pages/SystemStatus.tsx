@@ -1,30 +1,45 @@
+import { useState, type FormEvent } from 'react';
 import { useSensorData } from '@/lib/sensors/DataProvider';
 import { getSensorConnectionMessage, hasSystemStatusData } from '@/lib/sensors/display';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { InfoHint } from '@/components/ui/info-hint';
 import { SENSOR_IDS, SENSOR_CONFIGS } from '@/lib/sensors/types';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Activity, Battery, Clock, RadioTower, Wifi } from 'lucide-react';
+import { Activity, Battery, Clock, Copy, Plus, RadioTower, Wifi } from 'lucide-react';
 
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  return `${d}d ${h}h ${m}m`;
+  if (d > 0) return `${d}g ${h}s`;
+  if (h > 0) return `${h}s ${m}dk`;
+  return `${m}dk`;
 }
 
 function rssiLabel(rssi: number): string {
-  if (rssi > -50) return 'Excellent';
-  if (rssi > -60) return 'Good';
-  if (rssi > -70) return 'Fair';
-  return 'Weak';
+  if (rssi > -50) return 'Mükemmel';
+  if (rssi > -60) return 'İyi';
+  if (rssi > -70) return 'Orta';
+  return 'Zayıf';
+}
+
+const STALE_THRESHOLD_MS = 60_000;
+
+function isFresh(lastSync: Date): boolean {
+  return lastSync.getTime() > 0 && Date.now() - lastSync.getTime() < STALE_THRESHOLD_MS;
 }
 
 export default function SystemStatus() {
-  const { pools } = useSensorData();
+  const { pools, createPool } = useSensorData();
   const poolList = Object.values(pools).sort((left, right) => left.config.sortOrder - right.config.sortOrder);
   const systemInfo = poolList[0]?.systemInfo;
   const hasStatusData = hasSystemStatusData(systemInfo);
+
+  const [newPoolName, setNewPoolName] = useState('');
+  const [newPoolLocation, setNewPoolLocation] = useState('');
+  const [creatingPool, setCreatingPool] = useState(false);
+  const [copiedPoolId, setCopiedPoolId] = useState<string | null>(null);
 
   const summary = {
     uptime: systemInfo?.uptime ?? 0,
@@ -33,85 +48,127 @@ export default function SystemStatus() {
     lastSync: systemInfo?.lastSync ?? new Date(0),
   };
 
+  const handleCopyPoolId = async (poolId: string) => {
+    try {
+      await navigator.clipboard.writeText(poolId);
+      setCopiedPoolId(poolId);
+      window.setTimeout(() => {
+        setCopiedPoolId(current => (current === poolId ? null : current));
+      }, 1400);
+    } catch {
+      setCopiedPoolId(null);
+    }
+  };
+
+  const handleCreatePool = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!newPoolName.trim()) return;
+    setCreatingPool(true);
+    try {
+      await createPool({ name: newPoolName, location: newPoolLocation });
+      setNewPoolName('');
+      setNewPoolLocation('');
+    } finally {
+      setCreatingPool(false);
+    }
+  };
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <section className="rounded-[1.8rem] border border-border/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(237,252,243,0.92))] p-5 shadow-[0_30px_80px_-55px_rgba(7,130,95,0.75)]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="space-y-4">
+        <section className="rounded-2xl border border-border/70 bg-card px-4 py-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <RadioTower className="h-4 w-4 text-primary" />
-              <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground">Sistem</h2>
-              <InfoHint label="Bu ekran gateway, guc ve sensör hat baglantilarini izler. Offline sensorler kritik olarak isaretlenir." />
+              <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">Sistem</h2>
             </div>
-            <div className="rounded-full border border-border/70 bg-white/76 px-3 py-1.5 text-xs text-muted-foreground">
-              Havuz baglanti durumu
-            </div>
+            <span className="text-xs text-muted-foreground">Bağlantı ve telemetri</span>
           </div>
         </section>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           {[
-            { icon: Clock, label: 'Uptime', value: hasStatusData ? formatUptime(summary.uptime) : 'Yok' },
-            { icon: Wifi, label: 'RSSI', value: hasStatusData ? `${summary.rssi} dBm (${rssiLabel(summary.rssi)})` : 'Yok' },
-            { icon: Battery, label: 'Voltage', value: hasStatusData ? `${summary.voltage.toFixed(2)}V` : 'Yok' },
-            { icon: Activity, label: 'Last Sync', value: hasStatusData ? summary.lastSync.toLocaleTimeString('tr-TR') : 'Yok' },
+            { icon: Clock, label: 'Çalışma', value: hasStatusData ? formatUptime(summary.uptime) : '—' },
+            { icon: Wifi, label: 'Sinyal', value: hasStatusData ? `${summary.rssi} dBm · ${rssiLabel(summary.rssi)}` : '—' },
+            { icon: Battery, label: 'Voltaj', value: hasStatusData ? `${summary.voltage.toFixed(2)} V` : '—' },
+            { icon: Activity, label: 'Son Veri', value: hasStatusData ? summary.lastSync.toLocaleTimeString('tr-TR') : '—' },
           ].map(stat => (
-            <div key={stat.label} className="rounded-[1.6rem] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(242,252,246,0.9))] p-5 shadow-[0_25px_65px_-48px_rgba(7,130,95,0.75)]">
-              <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <stat.icon className="h-4 w-4" />
-                </div>
-                <span className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+            <div key={stat.label} className="flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3 py-2.5 shadow-sm">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
+                <stat.icon className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <span className="block text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                   {stat.label}
                 </span>
+                <span className="block truncate font-display text-sm font-semibold tabular-nums text-foreground">
+                  {stat.value}
+                </span>
               </div>
-              <span className="mt-4 block font-display text-2xl font-semibold tabular-nums text-foreground">{stat.value}</span>
             </div>
           ))}
         </div>
 
         {poolList.map(pool => {
+          const fresh = isFresh(pool.systemInfo.lastSync);
+          const statusLabel = !hasSystemStatusData(pool.systemInfo)
+            ? 'Veri yok'
+            : fresh
+              ? 'Online'
+              : 'Veri güncel değil';
+          const statusTone = !hasSystemStatusData(pool.systemInfo) || !fresh
+            ? 'border-status-offline/40 bg-status-offline/12 text-muted-foreground'
+            : 'border-status-healthy/40 bg-status-healthy/12 text-status-healthy';
+
           return (
             <section
               key={pool.config.id}
-              className="rounded-[2rem] border border-border/70 bg-card/88 p-6 shadow-[0_30px_80px_-55px_rgba(7,130,95,0.75)]"
+              className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm"
             >
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.26em] text-primary/80">Sensor hatlari</p>
-                  <h3 className="font-display mt-2 text-2xl font-semibold text-foreground">{pool.config.name}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{pool.config.location}</p>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="font-display text-lg font-semibold text-foreground">{pool.config.name}</h3>
+                  {pool.config.location && (
+                    <p className="text-xs text-muted-foreground">{pool.config.location}</p>
+                  )}
                 </div>
-                <div className="rounded-full border border-border/80 bg-primary/8 px-3 py-1.5 text-xs font-medium text-primary">
-                  {hasSystemStatusData(pool.systemInfo)
-                    ? pool.overallStatus === 'critical' ? 'Sahada kontrol onerilir' : 'Hatlar cevap veriyor'
-                    : 'Supabase durumu bekleniyor'}
-                </div>
+                <span className={cn(
+                  'rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]',
+                  statusTone,
+                )}>
+                  {statusLabel}
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                 {SENSOR_IDS.map(id => {
                   const sensor = pool.sensors[id];
                   const connectionMessage = getSensorConnectionMessage(sensor.connectionIssue);
                   const isFaulty = sensor.connectionIssue === 'faulty';
                   const missedOnce = sensor.connectionIssue === 'missed_once';
-                  const isConnected = !connectionMessage && pool.systemInfo.sensorConnections[id];
+                  const isConnected = !connectionMessage && pool.systemInfo.sensorConnections[id] && fresh;
+                  const label = isFaulty
+                    ? 'Veri yok'
+                    : missedOnce
+                      ? 'Bekleniyor'
+                      : isConnected
+                        ? 'Online'
+                        : 'Offline';
+                  const tone = isFaulty || (!missedOnce && !isConnected)
+                    ? 'bg-status-offline text-muted-foreground'
+                    : missedOnce
+                      ? 'bg-status-warning text-status-warning'
+                      : 'bg-status-healthy text-status-healthy';
                   return (
                     <div
                       key={id}
-                      className="flex items-center justify-between rounded-[1.3rem] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(242,252,246,0.88))] px-4 py-3"
+                      className="flex items-center justify-between rounded-xl border border-border/70 bg-muted/30 px-3 py-2"
                     >
-                      <span className="text-sm font-medium text-foreground">{SENSOR_CONFIGS[id].label}</span>
-                      <div className="flex items-center gap-2">
-                        <div className={cn(
-                          'h-2.5 w-2.5 rounded-full',
-                          isFaulty ? 'bg-status-critical' : missedOnce ? 'bg-status-warning' : isConnected ? 'bg-status-healthy' : 'bg-status-critical'
-                        )} />
-                        <span className={cn(
-                          'text-xs font-semibold uppercase tracking-[0.14em]',
-                          isFaulty ? 'text-status-critical' : missedOnce ? 'text-status-warning' : isConnected ? 'text-status-healthy' : 'text-status-critical'
-                        )}>
-                          {isFaulty ? 'Sensor bozuk' : missedOnce ? 'Veri alinmadi' : isConnected ? 'Online' : 'Offline'}
+                      <span className="truncate text-xs font-medium text-foreground">{SENSOR_CONFIGS[id].label}</span>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <div className={cn('h-2 w-2 rounded-full', tone.split(' ')[0])} />
+                        <span className={cn('text-[10px] font-semibold uppercase tracking-[0.1em]', tone.split(' ')[1])}>
+                          {label}
                         </span>
                       </div>
                     </div>
@@ -121,6 +178,63 @@ export default function SystemStatus() {
             </section>
           );
         })}
+
+        <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <Plus className="h-4 w-4 text-primary" />
+            <h3 className="font-display text-sm font-semibold text-foreground">Havuz Yönetimi</h3>
+            <span className="text-xs text-muted-foreground">({poolList.length})</span>
+          </div>
+
+          <form className="flex flex-col gap-1.5 sm:flex-row" onSubmit={handleCreatePool}>
+            <Input
+              placeholder="Yeni havuz adı"
+              value={newPoolName}
+              onChange={event => setNewPoolName(event.target.value)}
+              className="h-9 flex-1"
+            />
+            <Input
+              placeholder="Konum (opsiyonel)"
+              value={newPoolLocation}
+              onChange={event => setNewPoolLocation(event.target.value)}
+              className="h-9 flex-1"
+            />
+            <Button size="sm" className="h-9 shrink-0 gap-1" disabled={creatingPool || !newPoolName.trim()} type="submit">
+              <Plus className="h-3.5 w-3.5" />
+              {creatingPool ? 'Ekleniyor' : 'Havuz ekle'}
+            </Button>
+          </form>
+
+          <div className="mt-3 space-y-1.5">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              ESP cihaz kimlikleri
+            </p>
+            {poolList.map(pool => (
+              <div
+                key={pool.config.id}
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-border/65 bg-muted/30 px-3 py-2"
+              >
+                <span className="font-display text-sm font-semibold text-foreground">{pool.config.name}</span>
+                {pool.config.location && (
+                  <span className="text-xs text-muted-foreground">{pool.config.location}</span>
+                )}
+                <code className="ml-auto break-all rounded-md bg-muted/60 px-2 py-1 font-mono text-[11px] text-muted-foreground">
+                  {pool.config.id}
+                </code>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => void handleCopyPoolId(pool.config.id)}
+                  title={copiedPoolId === pool.config.id ? 'Kopyalandı' : 'Kimliği kopyala'}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
     </DashboardLayout>
   );

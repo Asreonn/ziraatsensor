@@ -1,20 +1,14 @@
-import { useLocation } from 'react-router-dom';
-import { Activity, PanelLeft } from 'lucide-react';
+import { PanelLeft } from 'lucide-react';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
-import { AicoLogo } from '@/components/brand/AicoLogo';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { AppSidebar } from './AppSidebar';
+import { MobileBottomNav } from './MobileBottomNav';
 
-const routeMeta: Record<string, { title: string; eyebrow: string }> = {
-  '/': { title: 'Alg Havuzlari', eyebrow: 'AICO mesh' },
-  '/system': { title: 'Sistem', eyebrow: 'Saha telemetrisi' },
-  '/settings': { title: 'Ayarlar', eyebrow: 'Kalibrasyon' },
-};
+function DesktopSidebarToggle() {
+  const { state, toggleSidebar } = useSidebar();
 
-function HeaderSidebarOpenButton() {
-  const { isMobile, state, toggleSidebar } = useSidebar();
-
-  if (!isMobile && state === 'expanded') {
+  if (state === 'expanded') {
     return null;
   }
 
@@ -24,9 +18,9 @@ function HeaderSidebarOpenButton() {
       variant="ghost"
       size="icon"
       onClick={toggleSidebar}
-      className="h-11 w-11 rounded-[1.25rem] border border-border/70 bg-card/78 shadow-[0_16px_35px_-28px_rgba(7,130,95,0.65)] hover:bg-card"
-      aria-label="Sidebari ac"
-      title="Sidebari ac"
+      className="fixed left-4 top-4 z-20 hidden h-11 w-11 rounded-2xl border border-border bg-card shadow-md hover:bg-muted md:flex"
+      aria-label="Menüyü aç"
+      title="Menüyü aç"
     >
       <PanelLeft className="h-4 w-4" />
     </Button>
@@ -34,34 +28,18 @@ function HeaderSidebarOpenButton() {
 }
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const location = useLocation();
-  const meta = routeMeta[location.pathname] ?? routeMeta['/'];
+  const isMobile = useIsMobile();
 
   return (
     <SidebarProvider>
       <div className="relative flex min-h-screen w-full overflow-hidden bg-transparent">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(217,245,74,0.18),transparent_22%),radial-gradient(circle_at_top_right,rgba(13,187,108,0.12),transparent_20%)]" />
-        <AppSidebar />
+        {!isMobile && <AppSidebar />}
         <div className="relative flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-10 border-b border-border/60 bg-background/78 backdrop-blur-xl">
-            <div className="flex min-h-20 items-center gap-3 px-4 py-3 md:px-6">
-              <HeaderSidebarOpenButton />
-              <AicoLogo compact className="hidden w-11 sm:block" />
-              <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-[0.32em] text-primary/80">{meta.eyebrow}</p>
-                <h1 className="font-display text-lg font-semibold tracking-tight text-foreground md:text-[1.35rem]">
-                  {meta.title}
-                </h1>
-              </div>
-              <div className="ml-auto hidden items-center gap-2 rounded-full border border-border/80 bg-card/70 px-4 py-2 text-xs text-muted-foreground shadow-[0_16px_35px_-28px_rgba(7,130,95,0.65)] md:flex">
-                <Activity className="h-3.5 w-3.5 text-status-healthy" />
-                <span>Canli izleme</span>
-              </div>
-            </div>
-          </header>
-          <main className="relative flex-1 p-4 md:p-6">
+          {!isMobile && <DesktopSidebarToggle />}
+          <main className="relative flex-1 p-3 pb-24 md:p-6 md:pb-6">
             {children}
           </main>
+          {isMobile && <MobileBottomNav />}
         </div>
       </div>
     </SidebarProvider>

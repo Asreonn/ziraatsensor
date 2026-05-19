@@ -48,18 +48,23 @@ describe('sensor display helpers', () => {
     })).toBe(false);
   });
 
-  it('maps missing updates to warning and faulty labels', () => {
-    expect(getSensorConnectionMessage('missed_once')).toContain('veri alinamadi');
-    expect(getSensorConnectionMessage('faulty')).toContain('Sensor bozuk');
+  it('treats missing updates and faulty sensors as offline (no data)', () => {
+    expect(getSensorConnectionMessage('missed_once')).toContain('veri alinmadi');
+    expect(getSensorConnectionMessage('faulty')).toContain('veri akmiyor');
 
     expect(getSensorStatusLabel({
       current: { value: 0, timestamp: new Date(), status: 'healthy' },
       connectionIssue: 'missed_once',
-    })).toBe('Veri alinmadi');
+    })).toBe('Veri bekleniyor');
 
     expect(getSensorDisplayStatus({
       current: { value: 0, timestamp: new Date(), status: 'healthy' },
       connectionIssue: 'faulty',
-    })).toBe('critical');
+    })).toBe('offline');
+
+    expect(getSensorDisplayStatus({
+      current: { value: 0, timestamp: new Date(0), status: 'offline' },
+      connectionIssue: null,
+    })).toBe('offline');
   });
 });
