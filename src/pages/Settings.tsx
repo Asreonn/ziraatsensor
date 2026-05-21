@@ -2,23 +2,38 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useSensorData } from '@/lib/sensors/DataProvider';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { SENSOR_IDS, SENSOR_CONFIGS } from '@/lib/sensors/types';
+import { SENSOR_IDS, SENSOR_CONFIGS, SensorId } from '@/lib/sensors/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { LogOut, SlidersHorizontal, Waves } from 'lucide-react';
+import { LogOut, Settings2, SlidersHorizontal, Waves } from 'lucide-react';
+import { SensorCalibrationDialog } from '@/components/dashboard/SensorCalibrationDialog';
+import { clearCalibration, loadCalibrations, subscribeCalibrationChanges } from '@/lib/sensors/calibration';
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
-  const { refreshInterval, setRefreshInterval, dataMode, setDataMode, error } = useSensorData();
+  const { refreshInterval, setRefreshInterval, dataMode, setDataMode, error, pools } = useSensorData();
   const [interval, setInterval] = useState(refreshInterval / 1000);
   const [savingInterval, setSavingInterval] = useState(false);
   const [savingMode, setSavingMode] = useState(false);
+  const [calibrationTarget, setCalibrationTarget] = useState<SensorId | null>(null);
+  const [calibrations, setCalibrations] = useState(() => loadCalibrations());
 
   useEffect(() => {
     setInterval(refreshInterval / 1000);
   }, [refreshInterval]);
+
+  useEffect(() => {
+    return subscribeCalibrationChanges(() => setCalibrations(loadCalibrations()));
+  }, []);
+
+  const firstPool = Object.values(pools)[0];
+  const liveValueFor = (id: SensorId): number | null => {
+    const reading = firstPool?.sensors?.[id]?.current;
+    if (!reading || reading.status === 'offline') return null;
+    return reading.value;
+  };
 
   const handleRefreshApply = async () => {
     setSavingInterval(true);
@@ -110,14 +125,43 @@ export default function SettingsPage() {
           <div className="space-y-2 border-t border-border/60 px-3 py-3 md:px-4">
             {SENSOR_IDS.map(id => {
               const c = SENSOR_CONFIGS[id];
+              const cal = calibrations[id];
               return (
                 <div
                   key={id}
                   className="rounded-xl border border-border/60 bg-muted/25 p-3"
                 >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="font-display text-sm font-semibold text-foreground">{c.label}</span>
-                    <span className="text-[11px] text-muted-foreground">{c.unit}</span>
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-display text-sm font-semibold text-foreground">{c.label}</span>
+                      <span className="text-[11px] text-muted-foreground">{c.unit}</span>
+                      {cal && (
+                        <span className="rounded-full border border-status-healthy/40 bg-status-healthy/10 px-1.5 py-0.5 font-mono text-[10px] text-status-healthy">
+                          y = {cal.slope.toFixed(3)}x {cal.intercept >= 0 ? '+' : '−'} {Math.abs(cal.intercept).toFixed(3)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {cal && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-[11px] text-muted-foreground hover:text-status-critical"
+                          onClick={() => clearCalibration(id)}
+                        >
+                          Sıfırla
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant={cal ? 'outline' : 'default'}
+                        className="h-7 gap-1 px-2 text-[11px]"
+                        onClick={() => setCalibrationTarget(id)}
+                      >
+                        <Settings2 className="h-3 w-3" />
+                        {cal ? 'Yeniden kalibre' : 'Kalibre et'}
+                      </Button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                     <div>
@@ -142,6 +186,17 @@ export default function SettingsPage() {
             })}
           </div>
         </details>
+
+        {calibrationTarget && (
+          <SensorCalibrationDialog
+            open={!!calibrationTarget}
+            onOpenChange={open => {
+              if (!open) setCalibrationTarget(null);
+            }}
+            sensorId={calibrationTarget}
+            liveValue={liveValueFor(calibrationTarget)}
+          />
+        )}
 
         <section className="flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
           <div className="min-w-0">

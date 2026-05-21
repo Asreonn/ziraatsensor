@@ -24,6 +24,12 @@ import {
   generateReading,
   getStatus,
 } from './mockGenerator';
+import {
+  CalibrationMap,
+  applyCalibration,
+  loadCalibrations,
+  subscribeCalibrationChanges,
+} from './calibration';
 
 const DEFAULT_REFRESH_INTERVAL = 3000;
 const HISTORY_POINTS = 120;
@@ -120,12 +126,35 @@ function getOverallStatus(sensors: Record<SensorId, SensorData>) {
   return 'offline' as const;
 }
 
-function buildMockPoolSensors(poolConfig: PoolConfig): Record<SensorId, SensorData> {
+function applyCalibrationToReading(
+  sensorId: SensorId,
+  reading: SensorReading,
+  calibrations: CalibrationMap,
+): SensorReading {
+  const cal = calibrations[sensorId];
+  if (!cal) return reading;
+  if (reading.status === 'offline') return reading;
+  const config = SENSOR_CONFIGS[sensorId];
+  const adjusted = applyCalibration(reading.value, cal);
+  const rounded = Math.round(adjusted * 100) / 100;
+  return { ...reading, value: rounded, status: getStatus(config, rounded) };
+}
+
+function calibrateHistory(
+  sensorId: SensorId,
+  history: SensorReading[],
+  calibrations: CalibrationMap,
+): SensorReading[] {
+  if (!calibrations[sensorId]) return history;
+  return history.map(reading => applyCalibrationToReading(sensorId, reading, calibrations));
+}
+
+function buildMockPoolSensors(poolConfig: PoolConfig, calibrations: CalibrationMap): Record<SensorId, SensorData> {
   const sensors = {} as Record<SensorId, SensorData>;
   SENSOR_IDS.forEach(id => {
     const config = SENSOR_CONFIGS[id];
     const offset = poolConfig.offsets[id] ?? 0;
-    const history = generateHistory(config, offset, 60, 60);
+    const history = calibrateHistory(id, generateHistory(config, offset, 60, 60), calibrations);
     sensors[id] = {
       config,
       current: history[history.length - 1],
@@ -139,10 +168,10 @@ function buildMockPoolSensors(poolConfig: PoolConfig): Record<SensorId, SensorDa
   return sensors;
 }
 
-function buildMockInitialPools(poolConfigs: PoolConfig[]): Record<string, PoolData> {
+function buildMockInitialPools(poolConfigs: PoolConfig[], calibrations: CalibrationMap): Record<string, PoolData> {
   const next = {} as Record<string, PoolData>;
   poolConfigs.forEach(poolConfig => {
-    const sensors = buildMockPoolSensors(poolConfig);
+    const sensors = buildMockPoolSensors(poolConfig, calibrations);
     next[poolConfig.id] = {
       config: poolConfig,
       sensors,
@@ -185,13 +214,17 @@ function buildEmptyLivePools(poolConfigs: PoolConfig[]): Record<string, PoolData
   return next;
 }
 
-function tickMockPools(prev: Record<string, PoolData>, poolConfigs: PoolConfig[]): Record<string, PoolData> {
+function tickMockPools(
+  prev: Record<string, PoolData>,
+  poolConfigs: PoolConfig[],
+  calibrations: CalibrationMap,
+): Record<string, PoolData> {
   const next = {} as Record<string, PoolData>;
 
   poolConfigs.forEach(poolConfig => {
     const previousPool = prev[poolConfig.id];
     if (!previousPool) {
-      next[poolConfig.id] = buildMockInitialPools([poolConfig])[poolConfig.id];
+      next[poolConfig.id] = buildMockInitialPools([poolConfig], calibrations)[poolConfig.id];
       return;
     }
 
@@ -200,7 +233,8 @@ function tickMockPools(prev: Record<string, PoolData>, poolConfigs: PoolConfig[]
 
     SENSOR_IDS.forEach(id => {
       const config = SENSOR_CONFIGS[id];
-      const reading = generateReading(config, poolConfig.offsets[id] ?? 0);
+      const raw = generateReading(config, poolConfig.offsets[id] ?? 0);
+      const reading = applyCalibrationToReading(id, raw, calibrations);
       const history = [...previousPool.sensors[id].history.slice(-(HISTORY_POINTS - 1)), reading];
       const detected = detectAnomalies(poolConfig.id, id, history);
       const hadUnread = previousPool.sensors[id].hasUnreadAnomaly;
@@ -356,7 +390,7 @@ function toSystemInfo(row?: PoolSystemStatusRow): SystemInfo {
   };
 }
 
-function buildReadingGroups(rows: SensorReadingRow[]) {
+function buildReadingGroups(rows: SensorReadingRow[], calibrations: CalibrationMap) {
   const grouped: Record<string, SensorReading[]> = {};
 
   rows.forEach(row => {
@@ -370,10 +404,13 @@ function buildReadingGroups(rows: SensorReadingRow[]) {
     if (grouped[key].length >= HISTORY_POINTS) return;
 
     const config = SENSOR_CONFIGS[sensorId];
+    const cal = calibrations[sensorId];
+    const rawValue = row.value;
+    const adjusted = cal ? Math.round(applyCalibration(rawValue, cal) * 100) / 100 : rawValue;
     grouped[key].push({
-      value: row.value,
+      value: adjusted,
       timestamp: new Date(row.recorded_at),
-      status: getStatus(config, row.value),
+      status: getStatus(config, adjusted),
     });
   });
 
@@ -492,6 +529,7 @@ async function fetchLivePools(
   poolConfigs: PoolConfig[],
   readState: Record<string, string[]>,
   syncState: Record<string, LiveSensorSyncState>,
+  calibrations: CalibrationMap,
 ): Promise<Record<string, PoolData>> {
   if (!supabase || poolConfigs.length === 0) return {};
 
@@ -512,7 +550,7 @@ async function fetchLivePools(
   if (readingsResult.error) throw readingsResult.error;
   if (statusResult.error) throw statusResult.error;
 
-  const groupedReadings = buildReadingGroups(readingsResult.data ?? []);
+  const groupedReadings = buildReadingGroups(readingsResult.data ?? [], calibrations);
   const statusMap = new Map((statusResult.data ?? []).map(row => [row.pool_id, row]));
   const next = {} as Record<string, PoolData>;
 
@@ -587,6 +625,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const readAnomalyIdsRef = useRef<Record<string, string[]>>({});
   const liveSensorSyncStateRef = useRef<Record<string, LiveSensorSyncState>>({});
+  const [calibrations, setCalibrations] = useState<CalibrationMap>(() => loadCalibrations());
+
+  useEffect(() => {
+    return subscribeCalibrationChanges(() => setCalibrations(loadCalibrations()));
+  }, []);
 
   const persistPreferences = useCallback(async (patch: { use_mock_data?: boolean; refresh_interval_ms?: number }) => {
     if (!supabase || !user) return;
@@ -789,12 +832,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
 
     if (dataMode === 'mock') {
-      setPools(buildMockInitialPools(poolConfigs));
+      setPools(buildMockInitialPools(poolConfigs, calibrations));
       setLoading(false);
 
       const timer = window.setInterval(() => {
         if (cancelled) return;
-        setPools(prev => tickMockPools(prev, poolConfigs));
+        setPools(prev => tickMockPools(prev, poolConfigs, calibrations));
       }, refreshInterval);
 
       return () => {
@@ -811,7 +854,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const snapshot = await fetchLivePools(poolConfigs, readAnomalyIdsRef.current, liveSensorSyncStateRef.current);
+        const snapshot = await fetchLivePools(poolConfigs, readAnomalyIdsRef.current, liveSensorSyncStateRef.current, calibrations);
         if (cancelled) return;
         setPools(snapshot);
         setError(null);
@@ -833,7 +876,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [dataMode, poolConfigs, refreshInterval, user, workspaceReady]);
+  }, [dataMode, poolConfigs, refreshInterval, user, workspaceReady, calibrations]);
 
   const value = useMemo<SensorContextValue>(() => ({
     pools,
