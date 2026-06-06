@@ -13,10 +13,11 @@ import { clearCalibration, loadCalibrations, subscribeCalibrationChanges } from 
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
-  const { refreshInterval, setRefreshInterval, dataMode, setDataMode, error, pools } = useSensorData();
+  const { refreshInterval, setRefreshInterval, dataMode, setDataMode, devMode, setDevMode, error, pools } = useSensorData();
   const [interval, setInterval] = useState(refreshInterval / 1000);
   const [savingInterval, setSavingInterval] = useState(false);
   const [savingMode, setSavingMode] = useState(false);
+  const [savingDev, setSavingDev] = useState(false);
   const [calibrationTarget, setCalibrationTarget] = useState<SensorId | null>(null);
   const [calibrations, setCalibrations] = useState(() => loadCalibrations());
 
@@ -45,6 +46,12 @@ export default function SettingsPage() {
     setSavingMode(true);
     await setDataMode(checked ? 'live' : 'mock');
     setSavingMode(false);
+  };
+
+  const handleDevChange = async (checked: boolean) => {
+    setSavingDev(true);
+    await setDevMode(checked);
+    setSavingDev(false);
   };
 
   return (
@@ -83,6 +90,25 @@ export default function SettingsPage() {
               <span className={`text-xs font-semibold ${dataMode === 'live' ? 'text-primary' : 'text-muted-foreground'}`}>
                 Reel
               </span>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-foreground">Geliştirici Ayarları</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Açıkken Sistem sayfasında geliştirici bildirimleri görünür: kalibrasyon yetersizlik
+                uyarıları, ham sensör voltajları ve cihaz tanılama bilgileri.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-full border border-border/70 bg-muted/30 px-3 py-1.5">
+              <span className={`text-xs font-semibold ${devMode ? 'text-primary' : 'text-muted-foreground'}`}>
+                {devMode ? 'Açık' : 'Kapalı'}
+              </span>
+              <Switch checked={devMode} disabled={savingDev} onCheckedChange={handleDevChange} />
             </div>
           </div>
         </section>

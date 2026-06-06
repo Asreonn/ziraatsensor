@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/client';
 import {
   Anomaly,
   DataMode,
+  EspDiagnostics,
   PoolConfig,
   PoolData,
   SENSOR_CONFIGS,
@@ -53,6 +54,8 @@ interface SensorContextValue {
   setRefreshInterval: (ms: number) => Promise<void>;
   dataMode: DataMode;
   setDataMode: (mode: DataMode) => Promise<void>;
+  devMode: boolean;
+  setDevMode: (enabled: boolean) => Promise<void>;
   createPool: (input: { name: string; location: string }) => Promise<string>;
   claimPool: (input: { poolId: string; name?: string; location?: string }) => Promise<string>;
   loading: boolean;
@@ -371,6 +374,26 @@ function deriveAnomaliesFromHistory(poolId: string, sensorId: SensorId, history:
     .slice(0, 24);
 }
 
+function normalizeDiagnostics(input: unknown): EspDiagnostics {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return {};
+  const obj = input as Record<string, unknown>;
+  const out: EspDiagnostics = {};
+  if (typeof obj.freeHeap === 'number') out.freeHeap = obj.freeHeap;
+  if (typeof obj.maxBlock === 'number') out.maxBlock = obj.maxBlock;
+  if (typeof obj.adsOk === 'boolean') out.adsOk = obj.adsOk;
+
+  const raw = obj.rawVoltage;
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    const rawOut: Partial<Record<SensorId, number>> = {};
+    SENSOR_IDS.forEach(id => {
+      const value = (raw as Record<string, unknown>)[id];
+      if (typeof value === 'number') rawOut[id] = value;
+    });
+    out.rawVoltage = rawOut;
+  }
+  return out;
+}
+
 function toSystemInfo(row?: PoolSystemStatusRow): SystemInfo {
   if (!row) {
     return {
@@ -379,6 +402,7 @@ function toSystemInfo(row?: PoolSystemStatusRow): SystemInfo {
       voltage: 0,
       lastSync: new Date(0),
       sensorConnections: normalizeConnections(null, false),
+      diagnostics: {},
     };
   }
 
@@ -388,6 +412,7 @@ function toSystemInfo(row?: PoolSystemStatusRow): SystemInfo {
     voltage: row.voltage,
     lastSync: new Date(row.last_sync),
     sensorConnections: normalizeConnections(row.sensor_connections, false),
+    diagnostics: normalizeDiagnostics(row.diagnostics),
   };
 }
 
@@ -621,6 +646,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [poolConfigs, setPoolConfigs] = useState<PoolConfig[]>([]);
   const [refreshInterval, setRefreshIntervalState] = useState(DEFAULT_REFRESH_INTERVAL);
   const [dataMode, setDataModeState] = useState<DataMode>('mock');
+  const [devMode, setDevModeState] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workspaceReady, setWorkspaceReady] = useState(false);
@@ -632,7 +658,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return subscribeCalibrationChanges(() => setCalibrations(loadCalibrations()));
   }, []);
 
-  const persistPreferences = useCallback(async (patch: { use_mock_data?: boolean; refresh_interval_ms?: number }) => {
+  const persistPreferences = useCallback(async (patch: { use_mock_data?: boolean; refresh_interval_ms?: number; dev_mode?: boolean }) => {
     if (!supabase || !user) return;
 
     const { error: persistError } = await supabase
@@ -641,10 +667,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         user_id: user.id,
         use_mock_data: patch.use_mock_data ?? dataMode === 'mock',
         refresh_interval_ms: patch.refresh_interval_ms ?? refreshInterval,
+        dev_mode: patch.dev_mode ?? devMode,
       });
 
     if (persistError) throw persistError;
-  }, [dataMode, refreshInterval, user]);
+  }, [dataMode, devMode, refreshInterval, user]);
+
+  const setDevMode = useCallback(async (enabled: boolean) => {
+    setDevModeState(enabled);
+    try {
+      await persistPreferences({ dev_mode: enabled });
+    } catch (persistError) {
+      setError(persistError instanceof Error ? persistError.message : 'Gelistirici modu kaydedilemedi.');
+    }
+  }, [persistPreferences]);
 
   const markAnomaliesRead = useCallback((poolId: string, sensorId: SensorId) => {
     const key = `${poolId}:${sensorId}`;
@@ -853,6 +889,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setPoolConfigs(nextPoolConfigs);
         setRefreshIntervalState(preferences?.refresh_interval_ms ?? DEFAULT_REFRESH_INTERVAL);
         setDataModeState(preferences?.use_mock_data === false ? 'live' : 'mock');
+        setDevModeState(preferences?.dev_mode === true);
         setWorkspaceReady(true);
       } catch (workspaceError) {
         if (cancelled) return;
@@ -928,12 +965,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setRefreshInterval,
     dataMode,
     setDataMode,
+    devMode,
+    setDevMode,
     createPool,
     claimPool,
     loading,
     error,
     markAnomaliesRead,
-  }), [createPool, claimPool, dataMode, error, loading, markAnomaliesRead, pools, refreshInterval, setDataMode, setRefreshInterval]);
+  }), [createPool, claimPool, dataMode, devMode, setDevMode, error, loading, markAnomaliesRead, pools, refreshInterval, setDataMode, setRefreshInterval]);
 
   return (
     <SensorContext.Provider value={value}>

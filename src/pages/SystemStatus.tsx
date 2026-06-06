@@ -1,12 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useSensorData } from '@/lib/sensors/DataProvider';
 import { getSensorConnectionMessage, hasSystemStatusData } from '@/lib/sensors/display';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
 import { SENSOR_IDS, SENSOR_CONFIGS } from '@/lib/sensors/types';
+import { loadCalibrations, subscribeCalibrationChanges } from '@/lib/sensors/calibration';
+import { buildDevNotices } from '@/lib/sensors/devDiagnostics';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Activity, Battery, Clock, Copy, Plus, RadioTower, Wifi } from 'lucide-react';
+import { Activity, Battery, Clock, Copy, Plus, RadioTower, Terminal, Wifi } from 'lucide-react';
 
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400);
@@ -31,8 +33,10 @@ function isFresh(lastSync: Date): boolean {
 }
 
 export default function SystemStatus() {
-  const { pools, createPool, claimPool } = useSensorData();
+  const { pools, createPool, claimPool, devMode } = useSensorData();
   const poolList = Object.values(pools).sort((left, right) => left.config.sortOrder - right.config.sortOrder);
+  const [calibrations, setCalibrations] = useState(() => loadCalibrations());
+  useEffect(() => subscribeCalibrationChanges(() => setCalibrations(loadCalibrations())), []);
   const systemInfo = poolList[0]?.systemInfo;
   const hasStatusData = hasSystemStatusData(systemInfo);
 
@@ -196,6 +200,52 @@ export default function SystemStatus() {
                   );
                 })}
               </div>
+
+              {devMode && (() => {
+                const notices = buildDevNotices(pool, calibrations);
+                const raw = pool.systemInfo.diagnostics.rawVoltage ?? {};
+                const diag = pool.systemInfo.diagnostics;
+                return (
+                  <div className="mt-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3">
+                    <div className="mb-2 flex items-center gap-1.5">
+                      <Terminal className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs font-semibold text-foreground">Geliştirici Bildirimleri</span>
+                    </div>
+
+                    {notices.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground">Bildirim yok — kalibrasyon ve cihaz tanılaması normal.</p>
+                    ) : (
+                      <ul className="space-y-1.5">
+                        {notices.map(notice => (
+                          <li
+                            key={notice.id}
+                            className={cn(
+                              'rounded-lg border px-2.5 py-1.5',
+                              notice.level === 'critical'
+                                ? 'border-status-critical/40 bg-status-critical/10'
+                                : notice.level === 'warning'
+                                  ? 'border-status-warning/40 bg-status-warning/10'
+                                  : 'border-border/60 bg-muted/30',
+                            )}
+                          >
+                            <p className="text-[11px] font-semibold text-foreground">{notice.title}</p>
+                            <p className="text-[11px] text-muted-foreground">{notice.detail}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-border/50 pt-2 font-mono text-[10px] text-muted-foreground">
+                      {typeof diag.freeHeap === 'number' && <span>heap: {diag.freeHeap} B</span>}
+                      {typeof diag.maxBlock === 'number' && <span>maxBlock: {diag.maxBlock} B</span>}
+                      {typeof diag.adsOk === 'boolean' && <span>ADS: {diag.adsOk ? 'OK' : 'HATA'}</span>}
+                      {Object.entries(raw).map(([id, v]) => (
+                        <span key={id}>{id}: {Number(v).toFixed(3)} V</span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </section>
           );
         })}

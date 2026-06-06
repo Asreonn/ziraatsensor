@@ -35,6 +35,7 @@ export interface Database {
       pool_system_status: {
         Row: {
           created_at: string;
+          diagnostics: Json;
           last_sync: string;
           pool_id: string;
           rssi: number;
@@ -45,6 +46,7 @@ export interface Database {
         };
         Insert: {
           created_at?: string;
+          diagnostics?: Json;
           last_sync?: string;
           pool_id: string;
           rssi?: number;
@@ -55,6 +57,7 @@ export interface Database {
         };
         Update: {
           created_at?: string;
+          diagnostics?: Json;
           last_sync?: string;
           pool_id?: string;
           rssi?: number;
@@ -90,6 +93,7 @@ export interface Database {
       user_preferences: {
         Row: {
           created_at: string;
+          dev_mode: boolean;
           refresh_interval_ms: number;
           updated_at: string;
           use_mock_data: boolean;
@@ -97,6 +101,7 @@ export interface Database {
         };
         Insert: {
           created_at?: string;
+          dev_mode?: boolean;
           refresh_interval_ms?: number;
           updated_at?: string;
           use_mock_data?: boolean;
@@ -104,6 +109,7 @@ export interface Database {
         };
         Update: {
           created_at?: string;
+          dev_mode?: boolean;
           refresh_interval_ms?: number;
           updated_at?: string;
           use_mock_data?: boolean;

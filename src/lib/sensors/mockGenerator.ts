@@ -128,6 +128,17 @@ export function generateSystemInfo(): SystemInfo {
     voltage: 3.2 + Math.random() * 0.5,
     lastSync: new Date(),
     sensorConnections: connections as Record<SensorId, boolean>,
+    diagnostics: {
+      freeHeap: 30000 + Math.floor(Math.random() * 12000),
+      maxBlock: 14000 + Math.floor(Math.random() * 4000),
+      adsOk: true,
+      rawVoltage: {
+        ph: Number((1.2 + Math.random() * 0.4).toFixed(3)),
+        tds: Number((0.8 + Math.random() * 0.6).toFixed(3)),
+        do: Number((1.5 + Math.random() * 0.5).toFixed(3)),
+        ldr: Number((2.0 + Math.random() * 1.5).toFixed(3)),
+      },
+    },
   };
 }
 
@@ -140,5 +151,6 @@ export function generatePoolSystemInfo(seed: string): SystemInfo {
     voltage: Number((info.voltage - (seedValue % 4) * 0.03).toFixed(2)),
     lastSync: info.lastSync,
     sensorConnections: info.sensorConnections,
+    diagnostics: info.diagnostics,
   };
 }

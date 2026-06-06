@@ -67,12 +67,20 @@ export interface PoolData {
   systemInfo: SystemInfo;
 }
 
+export interface EspDiagnostics {
+  freeHeap?: number;
+  maxBlock?: number;
+  adsOk?: boolean;
+  rawVoltage?: Partial<Record<SensorId, number>>;
+}
+
 export interface SystemInfo {
   uptime: number;
   rssi: number;
   voltage: number;
   lastSync: Date;
   sensorConnections: Record<SensorId, boolean>;
+  diagnostics: EspDiagnostics;
 }
 
 export const SENSOR_CONFIGS: Record<SensorId, SensorConfig> = {

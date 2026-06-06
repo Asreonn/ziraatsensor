@@ -47,6 +47,7 @@ describe('sensor display helpers', () => {
         airTemp: false,
         humidity: false,
       },
+      diagnostics: {},
     })).toBe(false);
   });
 
