@@ -261,9 +261,6 @@ export default function SystemStatus() {
             <p className="mb-2 text-xs font-medium text-foreground">
               Cihaz kimliğiyle havuz ekle
             </p>
-            <p className="mb-2 text-[11px] text-muted-foreground">
-              ESP cihazının havuz (pool) kimliğini girin. Havuz hesabınıza tanımlanır ve canlı veriler burada görünür.
-            </p>
             <form className="flex flex-col gap-1.5 sm:flex-row" onSubmit={handleClaimPool}>
               <Input
                 placeholder="Havuz / cihaz kimliği (UUID)"

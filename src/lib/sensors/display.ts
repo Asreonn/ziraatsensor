@@ -36,7 +36,7 @@ export function getSensorStatusLabel(sensor: Pick<SensorData, 'current' | 'conne
 }
 
 export function getSensorConnectionMessage(connectionIssue: SensorConnectionIssue): string | null {
-  if (connectionIssue === 'faulty') return 'Bu sensorden veri akmiyor. ESP cihazinin baglantisini kontrol edin.';
-  if (connectionIssue === 'missed_once') return 'Son guncelleme icin veri alinmadi. Bir sonraki donguyu bekliyoruz.';
+  if (connectionIssue === 'faulty') return 'Veri akmıyor.';
+  if (connectionIssue === 'missed_once') return 'Veri bekleniyor.';
   return null;
 }

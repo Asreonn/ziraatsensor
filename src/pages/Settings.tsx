@@ -77,9 +77,6 @@ export default function SettingsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-foreground">Veri Modu</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Test: rastgele üretilen veri. Reel: cihazdan gelen gerçek veri.
-              </p>
             </div>
 
             <div className="flex items-center gap-2 rounded-full border border-border/70 bg-muted/30 px-3 py-1.5">
@@ -98,10 +95,6 @@ export default function SettingsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-foreground">Geliştirici Ayarları</h3>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Açıkken Sistem sayfasında geliştirici bildirimleri görünür: kalibrasyon yetersizlik
-                uyarıları, ham sensör voltajları ve cihaz tanılama bilgileri.
-              </p>
             </div>
 
             <div className="flex items-center gap-2 rounded-full border border-border/70 bg-muted/30 px-3 py-1.5">
@@ -119,7 +112,6 @@ export default function SettingsPage() {
               <Waves className="h-4 w-4 text-primary" />
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Veri Yenileme</h3>
-                <p className="mt-0.5 text-xs text-muted-foreground">Veriyi her N saniyede bir tazele.</p>
               </div>
             </div>
 

@@ -52,8 +52,8 @@ describe('sensor display helpers', () => {
   });
 
   it('treats missing updates and faulty sensors as offline (no data)', () => {
-    expect(getSensorConnectionMessage('missed_once')).toContain('veri alinmadi');
-    expect(getSensorConnectionMessage('faulty')).toContain('veri akmiyor');
+    expect(getSensorConnectionMessage('missed_once')).toContain('bekleniyor');
+    expect(getSensorConnectionMessage('faulty')).toContain('akmıyor');
 
     expect(getSensorStatusLabel({
       current: { value: 0, timestamp: new Date(), status: 'healthy' },
