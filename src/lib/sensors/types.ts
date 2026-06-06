@@ -1,4 +1,4 @@
-export type SensorId = 'ph' | 'ec' | 'do' | 'waterTemp' | 'airTemp' | 'humidity';
+export type SensorId = 'ph' | 'ec' | 'tds' | 'do' | 'ldr' | 'waterTemp' | 'airTemp' | 'humidity';
 export type SensorStatus = 'healthy' | 'warning' | 'critical' | 'offline';
 export type SensorConnectionIssue = 'none' | 'missed_once' | 'faulty';
 export type AnomalyType = 'spike' | 'threshold' | 'deviation' | 'connection';
@@ -86,10 +86,20 @@ export const SENSOR_CONFIGS: Record<SensorId, SensorConfig> = {
     min: 0, max: 5, warningMin: 1.0, warningMax: 3.0, criticalMin: 0.5, criticalMax: 4.0,
     baseValue: 1.8, amplitude: 0.3, period: 450,
   },
+  tds: {
+    id: 'tds', label: 'TDS', unit: 'ppm',
+    min: 0, max: 2000, warningMin: 150, warningMax: 1200, criticalMin: 50, criticalMax: 1800,
+    baseValue: 800, amplitude: 120, period: 450,
+  },
   do: {
     id: 'do', label: 'Dissolved O₂', unit: 'mg/L',
     min: 0, max: 20, warningMin: 5.0, warningMax: 12.0, criticalMin: 3.0, criticalMax: 15.0,
     baseValue: 7.5, amplitude: 1.2, period: 360,
+  },
+  ldr: {
+    id: 'ldr', label: 'Işık', unit: '%',
+    min: 0, max: 100, warningMin: 20, warningMax: 90, criticalMin: 5, criticalMax: 98,
+    baseValue: 60, amplitude: 25, period: 720,
   },
   waterTemp: {
     id: 'waterTemp', label: 'Su Sıcaklığı', unit: '°C',
@@ -108,7 +118,7 @@ export const SENSOR_CONFIGS: Record<SensorId, SensorConfig> = {
   },
 };
 
-export const SENSOR_IDS: SensorId[] = ['ph', 'ec', 'do', 'waterTemp', 'airTemp', 'humidity'];
+export const SENSOR_IDS: SensorId[] = ['ph', 'ec', 'tds', 'do', 'ldr', 'waterTemp', 'airTemp', 'humidity'];
 
 export const POOL_CONFIGS: PoolConfig[] = [
   {
@@ -116,6 +126,6 @@ export const POOL_CONFIGS: PoolConfig[] = [
     name: 'Pool-1',
     location: '',
     sortOrder: 1,
-    offsets: { ph: 0, ec: 0, do: 0, waterTemp: 0, airTemp: 0, humidity: 0 },
+    offsets: { ph: 0, ec: 0, tds: 0, do: 0, ldr: 0, waterTemp: 0, airTemp: 0, humidity: 0 },
   },
 ];

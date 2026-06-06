@@ -40,7 +40,9 @@ describe('sensor display helpers', () => {
       sensorConnections: {
         ph: false,
         ec: false,
+        tds: false,
         do: false,
+        ldr: false,
         waterTemp: false,
         airTemp: false,
         humidity: false,

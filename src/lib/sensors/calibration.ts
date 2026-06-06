@@ -117,10 +117,19 @@ export const SENSOR_CALIBRATION_SUGGESTIONS: Record<SensorId, CalibrationSuggest
     { value: 1.413, label: '1413 µS/cm', hint: 'Orta — KCl 0.01 M (1.413 mS/cm)' },
     { value: 12.88, label: '12.88 mS/cm', hint: 'Yüksek iletkenlik standardı' },
   ],
+  tds: [
+    { value: 42, label: '42 ppm', hint: '84 µS/cm iletkenlik standardı (0.5 faktör)' },
+    { value: 707, label: '707 ppm', hint: '1413 µS/cm KCl standardı (0.5 faktör)' },
+    { value: 1000, label: '1000 ppm', hint: 'Hazır 1000 ppm TDS kalibrasyon çözeltisi' },
+  ],
   do: [
     { value: 0, label: '0 mg/L', hint: 'Sodyum sülfit (Na₂SO₃) çözeltisi — sıfır oksijen' },
     { value: 8.26, label: '~8.26 mg/L', hint: '25 °C\'de havayla doygun saf su' },
     { value: 14.62, label: '~14.62 mg/L', hint: '0 °C\'de havayla doygun saf su (üst sınır)' },
+  ],
+  ldr: [
+    { value: 0, label: '% 0', hint: 'Sensörü tamamen karart (ışık yok)' },
+    { value: 100, label: '% 100', hint: 'Doğrudan parlak ışık altında doygunluk' },
   ],
   waterTemp: [
     { value: 0, label: '0 °C', hint: 'Buz–su karışımı (kıyısında erimekte olan buz)' },
