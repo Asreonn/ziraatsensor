@@ -135,7 +135,7 @@ export default function SystemStatus() {
           const statusLabel = !hasSystemStatusData(pool.systemInfo)
             ? 'Veri yok'
             : fresh
-              ? 'Online'
+              ? 'Çevrimiçi'
               : 'Veri güncel değil';
           const statusTone = !hasSystemStatusData(pool.systemInfo) || !fresh
             ? 'border-status-offline/40 bg-status-offline/12 text-muted-foreground'
@@ -173,8 +173,8 @@ export default function SystemStatus() {
                     : missedOnce
                       ? 'Bekleniyor'
                       : isConnected
-                        ? 'Online'
-                        : 'Offline';
+                        ? 'Çevrimiçi'
+                        : 'Çevrimdışı';
                   const tone = isFaulty || (!missedOnce && !isConnected)
                     ? 'bg-status-offline text-muted-foreground'
                     : missedOnce

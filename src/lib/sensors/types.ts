@@ -92,7 +92,7 @@ export const SENSOR_CONFIGS: Record<SensorId, SensorConfig> = {
     baseValue: 800, amplitude: 120, period: 450,
   },
   do: {
-    id: 'do', label: 'Dissolved O₂', unit: 'mg/L',
+    id: 'do', label: 'Çözünmüş O₂', unit: 'mg/L',
     min: 0, max: 20, warningMin: 5.0, warningMax: 12.0, criticalMin: 3.0, criticalMax: 15.0,
     baseValue: 7.5, amplitude: 1.2, period: 360,
   },

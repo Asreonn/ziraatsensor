@@ -2,9 +2,9 @@ import { SensorConnectionIssue, SensorData, SensorId, SensorReading, SensorStatu
 
 const sensorStatusLabels: Record<SensorStatus, string> = {
   healthy: 'Normal',
-  warning: 'Warning',
-  critical: 'Critical',
-  offline: 'Offline',
+  warning: 'Uyarı',
+  critical: 'Kritik',
+  offline: 'Çevrimdışı',
 };
 
 export function hasSensorReading(reading: SensorReading | null | undefined): boolean {
