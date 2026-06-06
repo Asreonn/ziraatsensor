@@ -31,7 +31,7 @@ function isFresh(lastSync: Date): boolean {
 }
 
 export default function SystemStatus() {
-  const { pools, createPool } = useSensorData();
+  const { pools, createPool, claimPool } = useSensorData();
   const poolList = Object.values(pools).sort((left, right) => left.config.sortOrder - right.config.sortOrder);
   const systemInfo = poolList[0]?.systemInfo;
   const hasStatusData = hasSystemStatusData(systemInfo);
@@ -40,6 +40,11 @@ export default function SystemStatus() {
   const [newPoolLocation, setNewPoolLocation] = useState('');
   const [creatingPool, setCreatingPool] = useState(false);
   const [copiedPoolId, setCopiedPoolId] = useState<string | null>(null);
+
+  const [claimId, setClaimId] = useState('');
+  const [claimName, setClaimName] = useState('');
+  const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   const summary = {
     uptime: systemInfo?.uptime ?? 0,
@@ -70,6 +75,22 @@ export default function SystemStatus() {
       setNewPoolLocation('');
     } finally {
       setCreatingPool(false);
+    }
+  };
+
+  const handleClaimPool = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!claimId.trim()) return;
+    setClaiming(true);
+    setClaimError(null);
+    try {
+      await claimPool({ poolId: claimId, name: claimName });
+      setClaimId('');
+      setClaimName('');
+    } catch (error) {
+      setClaimError(error instanceof Error ? error.message : 'Havuz eklenemedi.');
+    } finally {
+      setClaiming(false);
     }
   };
 
@@ -186,6 +207,39 @@ export default function SystemStatus() {
             <span className="text-xs text-muted-foreground">({poolList.length})</span>
           </div>
 
+          <div className="mb-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
+            <p className="mb-2 text-xs font-medium text-foreground">
+              Cihaz kimliğiyle havuz ekle
+            </p>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              ESP cihazının havuz (pool) kimliğini girin. Havuz hesabınıza tanımlanır ve canlı veriler burada görünür.
+            </p>
+            <form className="flex flex-col gap-1.5 sm:flex-row" onSubmit={handleClaimPool}>
+              <Input
+                placeholder="Havuz / cihaz kimliği (UUID)"
+                value={claimId}
+                onChange={event => setClaimId(event.target.value)}
+                className="h-9 flex-[2] font-mono text-xs"
+              />
+              <Input
+                placeholder="Havuz adı (opsiyonel)"
+                value={claimName}
+                onChange={event => setClaimName(event.target.value)}
+                className="h-9 flex-1"
+              />
+              <Button size="sm" className="h-9 shrink-0 gap-1" disabled={claiming || !claimId.trim()} type="submit">
+                <Plus className="h-3.5 w-3.5" />
+                {claiming ? 'Ekleniyor' : 'Cihazı ekle'}
+              </Button>
+            </form>
+            {claimError && (
+              <p className="mt-1.5 text-[11px] text-destructive">{claimError}</p>
+            )}
+          </div>
+
+          <p className="mb-1.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            Veya boş havuz oluştur
+          </p>
           <form className="flex flex-col gap-1.5 sm:flex-row" onSubmit={handleCreatePool}>
             <Input
               placeholder="Yeni havuz adı"

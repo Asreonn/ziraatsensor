@@ -123,6 +123,14 @@ export interface Database {
         };
         Returns: string;
       };
+      claim_pool: {
+        Args: {
+          target_pool_id: string;
+          pool_name?: string;
+          pool_location?: string;
+        };
+        Returns: string;
+      };
     };
   };
 }

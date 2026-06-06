@@ -54,6 +54,7 @@ interface SensorContextValue {
   dataMode: DataMode;
   setDataMode: (mode: DataMode) => Promise<void>;
   createPool: (input: { name: string; location: string }) => Promise<string>;
+  claimPool: (input: { poolId: string; name?: string; location?: string }) => Promise<string>;
   loading: boolean;
   error: string | null;
   markAnomaliesRead: (poolId: string, sensorId: SensorId) => void;
@@ -761,6 +762,49 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return data;
   }, [user]);
 
+  const claimPool = useCallback(async ({ poolId, name, location }: { poolId: string; name?: string; location?: string }) => {
+    if (!supabase || !user) {
+      throw new Error('Oturum bulunamadi.');
+    }
+
+    const trimmedId = poolId.trim();
+    if (!trimmedId) {
+      throw new Error('Havuz (cihaz) kimligi zorunlu.');
+    }
+
+    setError(null);
+
+    const { data, error: claimError } = await supabase.rpc('claim_pool', {
+      target_pool_id: trimmedId,
+      pool_name: name?.trim() || undefined,
+      pool_location: location?.trim() || undefined,
+    });
+
+    if (claimError) {
+      const raw = claimError.message ?? '';
+      let message = raw;
+      if (raw.includes('invalid input syntax')) message = 'Gecersiz kimlik formati. Tam havuz kimligini yapistirin.';
+      else if (raw.includes('not found')) message = 'Bu kimlikte bir havuz bulunamadi.';
+      else if (raw.includes('already claimed')) message = 'Bu havuz baska bir hesaba tanimli.';
+      setError(message);
+      throw new Error(message);
+    }
+
+    const { data: poolsData, error: poolsError } = await supabase
+      .from('pools')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('sort_order');
+
+    if (poolsError) {
+      setError(poolsError.message);
+      throw poolsError;
+    }
+
+    setPoolConfigs((poolsData ?? []).map(mapPoolRowToConfig));
+    return data;
+  }, [user]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -885,10 +929,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     dataMode,
     setDataMode,
     createPool,
+    claimPool,
     loading,
     error,
     markAnomaliesRead,
-  }), [createPool, dataMode, error, loading, markAnomaliesRead, pools, refreshInterval, setDataMode, setRefreshInterval]);
+  }), [createPool, claimPool, dataMode, error, loading, markAnomaliesRead, pools, refreshInterval, setDataMode, setRefreshInterval]);
 
   return (
     <SensorContext.Provider value={value}>
