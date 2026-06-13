@@ -142,6 +142,10 @@ function normalizeAlarmSettings(input: unknown): AlarmSettings {
   const raw = input as Record<string, unknown>;
   if (typeof raw.buzzerEnabled === 'boolean') settings.buzzerEnabled = raw.buzzerEnabled;
   if (typeof raw.buzzerMuted === 'boolean') settings.buzzerMuted = raw.buzzerMuted;
+  if (typeof raw.mutedAlarmKey === 'string') settings.mutedAlarmKey = raw.mutedAlarmKey;
+  if (raw.mutedAlarmKey === null) settings.mutedAlarmKey = null;
+  if (typeof raw.mutedAt === 'string') settings.mutedAt = raw.mutedAt;
+  if (raw.mutedAt === null) settings.mutedAt = null;
 
   const sensors = raw.alarmSensors;
   if (sensors && typeof sensors === 'object' && !Array.isArray(sensors)) {

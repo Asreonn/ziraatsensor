@@ -96,6 +96,50 @@ export interface Database {
           value?: number;
         };
       };
+      sensor_event_logs: {
+        Row: {
+          alarm_key: string | null;
+          created_at: string;
+          event_type: string;
+          id: number;
+          message: string;
+          metadata: Json;
+          pool_id: string;
+          sensor_id: string | null;
+          severity: string;
+          threshold_max: number | null;
+          threshold_min: number | null;
+          value: number | null;
+        };
+        Insert: {
+          alarm_key?: string | null;
+          created_at?: string;
+          event_type: string;
+          id?: number;
+          message?: string;
+          metadata?: Json;
+          pool_id: string;
+          sensor_id?: string | null;
+          severity?: string;
+          threshold_max?: number | null;
+          threshold_min?: number | null;
+          value?: number | null;
+        };
+        Update: {
+          alarm_key?: string | null;
+          created_at?: string;
+          event_type?: string;
+          id?: number;
+          message?: string;
+          metadata?: Json;
+          pool_id?: string;
+          sensor_id?: string | null;
+          severity?: string;
+          threshold_max?: number | null;
+          threshold_min?: number | null;
+          value?: number | null;
+        };
+      };
       user_preferences: {
         Row: {
           created_at: string;
@@ -150,4 +194,5 @@ export interface Database {
 export type PoolRow = Database['public']['Tables']['pools']['Row'];
 export type PoolSystemStatusRow = Database['public']['Tables']['pool_system_status']['Row'];
 export type SensorReadingRow = Database['public']['Tables']['sensor_readings']['Row'];
+export type SensorEventLogRow = Database['public']['Tables']['sensor_event_logs']['Row'];
 export type UserPreferencesRow = Database['public']['Tables']['user_preferences']['Row'];

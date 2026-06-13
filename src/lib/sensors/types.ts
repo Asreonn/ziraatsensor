@@ -31,6 +31,8 @@ export interface SensorThresholdConfig {
 export interface AlarmSettings {
   buzzerEnabled: boolean;
   buzzerMuted: boolean;
+  mutedAlarmKey: string | null;
+  mutedAt: string | null;
   alarmSensors: Record<SensorId, boolean>;
 }
 
@@ -160,6 +162,8 @@ export function getDefaultAlarmSettings(): AlarmSettings {
   return {
     buzzerEnabled: true,
     buzzerMuted: false,
+    mutedAlarmKey: null,
+    mutedAt: null,
     alarmSensors: SENSOR_IDS.reduce((acc, id) => {
       acc[id] = true;
       return acc;

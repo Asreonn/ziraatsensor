@@ -122,6 +122,8 @@ returns jsonb language sql immutable as $$
   select jsonb_build_object(
     'buzzerEnabled', true,
     'buzzerMuted', false,
+    'mutedAlarmKey', null,
+    'mutedAt', null,
     'alarmSensors', jsonb_build_object(
       'ph', true, 'ec', true, 'tds', true, 'do', true, 'ldr', true,
       'waterTemp', true, 'airTemp', true, 'humidity', true
@@ -147,6 +149,55 @@ set alarm_settings =
     'alarmSensors',
     (public.default_alarm_settings() -> 'alarmSensors') || coalesce(p.alarm_settings -> 'alarmSensors', '{}'::jsonb)
   );
+
+-- ---------- 050000: Sensor / alarm olay gunlugu ----------
+create table if not exists public.sensor_event_logs (
+  id bigint generated always as identity primary key,
+  pool_id uuid not null references public.pools(id) on delete cascade,
+  event_type text not null,
+  sensor_id text,
+  alarm_key text,
+  severity text not null default 'info',
+  value numeric(10, 2),
+  threshold_min numeric(10, 2),
+  threshold_max numeric(10, 2),
+  message text not null default '',
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists sensor_event_logs_pool_time_idx
+  on public.sensor_event_logs (pool_id, created_at desc);
+
+alter table public.sensor_event_logs enable row level security;
+
+drop policy if exists "sensor_event_logs_select_own" on public.sensor_event_logs;
+create policy "sensor_event_logs_select_own"
+on public.sensor_event_logs
+for select
+to authenticated
+using (
+  exists (
+    select 1
+    from public.pools
+    where pools.id = sensor_event_logs.pool_id
+      and pools.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "sensor_event_logs_insert_own" on public.sensor_event_logs;
+create policy "sensor_event_logs_insert_own"
+on public.sensor_event_logs
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.pools
+    where pools.id = sensor_event_logs.pool_id
+      and pools.user_id = auth.uid()
+  )
+);
 
 -- ---------- Sema cache'ini yenile (PostgREST) ----------
 notify pgrst, 'reload schema';
