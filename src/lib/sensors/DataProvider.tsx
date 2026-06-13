@@ -1,8 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthProvider';
-import type { PoolRow, PoolSystemStatusRow, SensorReadingRow } from '@/lib/supabase/database.types';
+import type { Json, PoolRow, PoolSystemStatusRow, SensorReadingRow } from '@/lib/supabase/database.types';
 import { supabase } from '@/lib/supabase/client';
 import {
+  AlarmSettings,
   Anomaly,
   DataMode,
   EspDiagnostics,
@@ -10,11 +11,15 @@ import {
   PoolData,
   SENSOR_CONFIGS,
   SENSOR_IDS,
+  SensorConfig,
   SensorConnectionIssue,
   SensorData,
   SensorId,
   SensorReading,
+  SensorThresholdConfig,
   SystemInfo,
+  getDefaultAlarmSettings,
+  getDefaultSensorThresholds,
 } from './types';
 import {
   calculateDelta,
@@ -56,6 +61,8 @@ interface SensorContextValue {
   setDataMode: (mode: DataMode) => Promise<void>;
   devMode: boolean;
   setDevMode: (enabled: boolean) => Promise<void>;
+  updatePoolThresholds: (poolId: string, thresholds: Record<SensorId, SensorThresholdConfig>) => Promise<void>;
+  updatePoolAlarmSettings: (poolId: string, patch: AlarmSettingsPatch) => Promise<void>;
   createPool: (input: { name: string; location: string }) => Promise<string>;
   claimPool: (input: { poolId: string; name?: string; location?: string }) => Promise<string>;
   loading: boolean;
@@ -64,6 +71,10 @@ interface SensorContextValue {
 }
 
 const SensorContext = createContext<SensorContextValue | null>(null);
+
+type AlarmSettingsPatch = Partial<Omit<AlarmSettings, 'alarmSensors'>> & {
+  alarmSensors?: Partial<Record<SensorId, boolean>>;
+};
 
 export function useSensorData() {
   const ctx = useContext(SensorContext);
@@ -105,6 +116,63 @@ function normalizeConnections(input: unknown, fallbackValue: boolean): Record<Se
   return connections;
 }
 
+function normalizeThresholds(input: unknown): Record<SensorId, SensorThresholdConfig> {
+  const thresholds = getDefaultSensorThresholds();
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return thresholds;
+
+  SENSOR_IDS.forEach(id => {
+    const value = (input as Record<string, unknown>)[id];
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    const raw = value as Record<string, unknown>;
+    thresholds[id] = {
+      warningMin: typeof raw.warningMin === 'number' ? raw.warningMin : thresholds[id].warningMin,
+      warningMax: typeof raw.warningMax === 'number' ? raw.warningMax : thresholds[id].warningMax,
+      criticalMin: typeof raw.criticalMin === 'number' ? raw.criticalMin : thresholds[id].criticalMin,
+      criticalMax: typeof raw.criticalMax === 'number' ? raw.criticalMax : thresholds[id].criticalMax,
+    };
+  });
+
+  return thresholds;
+}
+
+function normalizeAlarmSettings(input: unknown): AlarmSettings {
+  const settings = getDefaultAlarmSettings();
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return settings;
+
+  const raw = input as Record<string, unknown>;
+  if (typeof raw.buzzerEnabled === 'boolean') settings.buzzerEnabled = raw.buzzerEnabled;
+  if (typeof raw.buzzerMuted === 'boolean') settings.buzzerMuted = raw.buzzerMuted;
+
+  const sensors = raw.alarmSensors;
+  if (sensors && typeof sensors === 'object' && !Array.isArray(sensors)) {
+    SENSOR_IDS.forEach(id => {
+      const value = (sensors as Record<string, unknown>)[id];
+      if (typeof value === 'boolean') settings.alarmSensors[id] = value;
+    });
+  }
+
+  return settings;
+}
+
+function mergeAlarmSettings(current: AlarmSettings, patch: AlarmSettingsPatch): AlarmSettings {
+  return {
+    ...current,
+    ...patch,
+    alarmSensors: {
+      ...current.alarmSensors,
+      ...(patch.alarmSensors ?? {}),
+    },
+  };
+}
+
+function getPoolSensorConfig(poolConfig: PoolConfig, sensorId: SensorId): SensorConfig {
+  const thresholds = poolConfig.thresholds[sensorId];
+  return {
+    ...SENSOR_CONFIGS[sensorId],
+    ...thresholds,
+  };
+}
+
 const STALE_LOCATION_PLACEHOLDERS = new Set(['Yeni kayit havuzu', 'Yeni kayıt havuzu']);
 
 function mapPoolRowToConfig(row: PoolRow): PoolConfig {
@@ -115,6 +183,8 @@ function mapPoolRowToConfig(row: PoolRow): PoolConfig {
     location: STALE_LOCATION_PLACEHOLDERS.has(rawLocation) ? '' : rawLocation,
     sortOrder: row.sort_order,
     offsets: normalizeOffsets(row.sensor_offsets),
+    thresholds: normalizeThresholds(row.sensor_thresholds),
+    alarmSettings: normalizeAlarmSettings(row.alarm_settings),
   };
 }
 
@@ -134,11 +204,11 @@ function applyCalibrationToReading(
   sensorId: SensorId,
   reading: SensorReading,
   calibrations: CalibrationMap,
+  config: SensorConfig = SENSOR_CONFIGS[sensorId],
 ): SensorReading {
   const cal = calibrations[sensorId];
   if (!cal) return reading;
   if (reading.status === 'offline') return reading;
-  const config = SENSOR_CONFIGS[sensorId];
   const adjusted = applyCalibration(reading.value, cal);
   const rounded = Math.round(adjusted * 100) / 100;
   return { ...reading, value: rounded, status: getStatus(config, rounded) };
@@ -148,17 +218,18 @@ function calibrateHistory(
   sensorId: SensorId,
   history: SensorReading[],
   calibrations: CalibrationMap,
+  config: SensorConfig,
 ): SensorReading[] {
   if (!calibrations[sensorId]) return history;
-  return history.map(reading => applyCalibrationToReading(sensorId, reading, calibrations));
+  return history.map(reading => applyCalibrationToReading(sensorId, reading, calibrations, config));
 }
 
 function buildMockPoolSensors(poolConfig: PoolConfig, calibrations: CalibrationMap): Record<SensorId, SensorData> {
   const sensors = {} as Record<SensorId, SensorData>;
   SENSOR_IDS.forEach(id => {
-    const config = SENSOR_CONFIGS[id];
+    const config = getPoolSensorConfig(poolConfig, id);
     const offset = poolConfig.offsets[id] ?? 0;
-    const history = calibrateHistory(id, generateHistory(config, offset, 60, 60), calibrations);
+    const history = calibrateHistory(id, generateHistory(config, offset, 60, 60), calibrations, config);
     sensors[id] = {
       config,
       current: history[history.length - 1],
@@ -196,7 +267,7 @@ function buildEmptyLivePools(poolConfigs: PoolConfig[]): Record<string, PoolData
     SENSOR_IDS.forEach(id => {
       const reading = createOfflineReading(id);
       sensors[id] = {
-        config: SENSOR_CONFIGS[id],
+        config: getPoolSensorConfig(poolConfig, id),
         current: reading,
         history: [reading],
         delta: 0,
@@ -236,11 +307,11 @@ function tickMockPools(
     let newAnomalies: Anomaly[] = [];
 
     SENSOR_IDS.forEach(id => {
-      const config = SENSOR_CONFIGS[id];
+      const config = getPoolSensorConfig(poolConfig, id);
       const raw = generateReading(config, poolConfig.offsets[id] ?? 0);
-      const reading = applyCalibrationToReading(id, raw, calibrations);
+      const reading = applyCalibrationToReading(id, raw, calibrations, config);
       const history = [...previousPool.sensors[id].history.slice(-(HISTORY_POINTS - 1)), reading];
-      const detected = detectAnomalies(poolConfig.id, id, history);
+      const detected = detectAnomalies(poolConfig.id, id, history, config);
       const hadUnread = previousPool.sensors[id].hasUnreadAnomaly;
 
       sensors[id] = {
@@ -280,10 +351,14 @@ function buildLiveAnomalyId(poolId: string, sensorId: SensorId, type: string, ti
   return `live-${poolId}-${sensorId}-${type}-${timestamp.getTime()}-${suffix}`;
 }
 
-function deriveAnomaliesFromHistory(poolId: string, sensorId: SensorId, history: SensorReading[]): Anomaly[] {
+function deriveAnomaliesFromHistory(
+  poolId: string,
+  sensorId: SensorId,
+  history: SensorReading[],
+  config: SensorConfig,
+): Anomaly[] {
   if (history.length < 2) return [];
 
-  const config = SENSOR_CONFIGS[sensorId];
   const anomalies: Anomaly[] = [];
 
   for (let index = 1; index < history.length; index += 1) {
@@ -429,20 +504,29 @@ function buildReadingGroups(rows: SensorReadingRow[], calibrations: CalibrationM
     }
     if (grouped[key].length >= HISTORY_POINTS) return;
 
-    const config = SENSOR_CONFIGS[sensorId];
     const cal = calibrations[sensorId];
     const rawValue = row.value;
     const adjusted = cal ? Math.round(applyCalibration(rawValue, cal) * 100) / 100 : rawValue;
     grouped[key].push({
       value: adjusted,
       timestamp: new Date(row.recorded_at),
-      status: getStatus(config, adjusted),
+      status: 'healthy',
     });
   });
 
   Object.values(grouped).forEach(history => history.reverse());
 
   return grouped;
+}
+
+function applyStatusToHistory(history: SensorReading[], config: SensorConfig): SensorReading[] {
+  return history.map(reading => {
+    if (reading.status === 'offline') return reading;
+    return {
+      ...reading,
+      status: getStatus(config, reading.value),
+    };
+  });
 }
 
 function getLatestReadingTimestamp(history: SensorReading[]): number {
@@ -456,10 +540,10 @@ function buildConnectionAnomaly(
   issue: SensorConnectionIssue,
   missedCycles: number,
   timestampMs: number,
+  config: SensorConfig,
 ): Anomaly | null {
   if (issue === 'none' || timestampMs <= 0) return null;
 
-  const config = SENSOR_CONFIGS[sensorId];
   const timestamp = new Date(timestampMs);
 
   return {
@@ -595,10 +679,11 @@ async function fetchLivePools(
 
     SENSOR_IDS.forEach(sensorId => {
       const key = `${poolConfig.id}:${sensorId}`;
-      const history = groupedReadings[key] ?? [createOfflineReading(sensorId)];
+      const config = getPoolSensorConfig(poolConfig, sensorId);
+      const history = applyStatusToHistory(groupedReadings[key] ?? [createOfflineReading(sensorId)], config);
       const latestSensorTimestampMs = getLatestReadingTimestamp(history);
       const connectionState = evaluateLiveSensorIssue(key, poolCycleMs, latestSensorTimestampMs, syncState);
-      const derived = deriveAnomaliesFromHistory(poolConfig.id, sensorId, history).map(anomaly => ({
+      const derived = deriveAnomaliesFromHistory(poolConfig.id, sensorId, history, config).map(anomaly => ({
         ...anomaly,
         read: (readState[key] ?? []).includes(anomaly.id),
       }));
@@ -608,13 +693,14 @@ async function fetchLivePools(
         connectionState.issue,
         connectionState.missedCycles,
         poolCycleMs || latestSensorTimestampMs,
+        config,
       );
       const sensorAnomalies = connectionAnomaly
         ? [...derived, { ...connectionAnomaly, read: (readState[key] ?? []).includes(connectionAnomaly.id) }]
         : derived;
 
       sensors[sensorId] = {
-        config: SENSOR_CONFIGS[sensorId],
+        config,
         current: history[history.length - 1],
         history,
         delta: calculateDelta(history),
@@ -759,6 +845,74 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setError(persistError instanceof Error ? persistError.message : 'Veri modu kaydedilemedi.');
     }
   }, [persistPreferences]);
+
+  const updatePoolThresholds = useCallback(async (
+    poolId: string,
+    thresholds: Record<SensorId, SensorThresholdConfig>,
+  ) => {
+    if (!supabase || !user) {
+      throw new Error('Oturum bulunamadi.');
+    }
+
+    const nextThresholds = normalizeThresholds(thresholds);
+    const { error: updateError } = await supabase
+      .from('pools')
+      .update({ sensor_thresholds: nextThresholds as unknown as Json })
+      .eq('id', poolId);
+
+    if (updateError) {
+      setError(updateError.message);
+      throw updateError;
+    }
+
+    setPoolConfigs(prev => prev.map(pool =>
+      pool.id === poolId ? { ...pool, thresholds: nextThresholds } : pool
+    ));
+    setPools(prev => {
+      const pool = prev[poolId];
+      if (!pool) return prev;
+      return {
+        ...prev,
+        [poolId]: {
+          ...pool,
+          config: { ...pool.config, thresholds: nextThresholds },
+        },
+      };
+    });
+  }, [user]);
+
+  const updatePoolAlarmSettings = useCallback(async (poolId: string, patch: AlarmSettingsPatch) => {
+    if (!supabase || !user) {
+      throw new Error('Oturum bulunamadi.');
+    }
+
+    const current = poolConfigs.find(pool => pool.id === poolId)?.alarmSettings ?? getDefaultAlarmSettings();
+    const nextSettings = mergeAlarmSettings(current, patch);
+    const { error: updateError } = await supabase
+      .from('pools')
+      .update({ alarm_settings: nextSettings as unknown as Json })
+      .eq('id', poolId);
+
+    if (updateError) {
+      setError(updateError.message);
+      throw updateError;
+    }
+
+    setPoolConfigs(prev => prev.map(pool =>
+      pool.id === poolId ? { ...pool, alarmSettings: nextSettings } : pool
+    ));
+    setPools(prev => {
+      const pool = prev[poolId];
+      if (!pool) return prev;
+      return {
+        ...prev,
+        [poolId]: {
+          ...pool,
+          config: { ...pool.config, alarmSettings: nextSettings },
+        },
+      };
+    });
+  }, [poolConfigs, user]);
 
   const createPool = useCallback(async ({ name, location }: { name: string; location: string }) => {
     if (!supabase || !user) {
@@ -967,12 +1121,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setDataMode,
     devMode,
     setDevMode,
+    updatePoolThresholds,
+    updatePoolAlarmSettings,
     createPool,
     claimPool,
     loading,
     error,
     markAnomaliesRead,
-  }), [createPool, claimPool, dataMode, devMode, setDevMode, error, loading, markAnomaliesRead, pools, refreshInterval, setDataMode, setRefreshInterval]);
+  }), [createPool, claimPool, dataMode, devMode, setDevMode, error, loading, markAnomaliesRead, pools, refreshInterval, setDataMode, setRefreshInterval, updatePoolAlarmSettings, updatePoolThresholds]);
 
   return (
     <SensorContext.Provider value={value}>

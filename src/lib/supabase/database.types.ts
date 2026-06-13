@@ -5,29 +5,35 @@ export interface Database {
     Tables: {
       pools: {
         Row: {
+          alarm_settings: Json;
           created_at: string;
           id: string;
           location: string;
           name: string;
           sensor_offsets: Json;
+          sensor_thresholds: Json;
           sort_order: number;
           user_id: string;
         };
         Insert: {
+          alarm_settings?: Json;
           created_at?: string;
           id?: string;
           location?: string;
           name: string;
           sensor_offsets?: Json;
+          sensor_thresholds?: Json;
           sort_order?: number;
           user_id: string;
         };
         Update: {
+          alarm_settings?: Json;
           created_at?: string;
           id?: string;
           location?: string;
           name?: string;
           sensor_offsets?: Json;
+          sensor_thresholds?: Json;
           sort_order?: number;
           user_id?: string;
         };

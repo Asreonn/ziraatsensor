@@ -21,6 +21,19 @@ export interface SensorConfig {
   period: number;
 }
 
+export interface SensorThresholdConfig {
+  warningMin: number;
+  warningMax: number;
+  criticalMin: number;
+  criticalMax: number;
+}
+
+export interface AlarmSettings {
+  buzzerEnabled: boolean;
+  buzzerMuted: boolean;
+  alarmSensors: Record<SensorId, boolean>;
+}
+
 export interface SensorReading {
   value: number;
   timestamp: Date;
@@ -57,6 +70,8 @@ export interface PoolConfig {
   location: string;
   sortOrder: number;
   offsets: Partial<Record<SensorId, number>>;
+  thresholds: Record<SensorId, SensorThresholdConfig>;
+  alarmSettings: AlarmSettings;
 }
 
 export interface PoolData {
@@ -128,6 +143,30 @@ export const SENSOR_CONFIGS: Record<SensorId, SensorConfig> = {
 
 export const SENSOR_IDS: SensorId[] = ['ph', 'ec', 'tds', 'do', 'ldr', 'waterTemp', 'airTemp', 'humidity'];
 
+export function getDefaultSensorThresholds(): Record<SensorId, SensorThresholdConfig> {
+  return SENSOR_IDS.reduce((acc, id) => {
+    const config = SENSOR_CONFIGS[id];
+    acc[id] = {
+      warningMin: config.warningMin,
+      warningMax: config.warningMax,
+      criticalMin: config.criticalMin,
+      criticalMax: config.criticalMax,
+    };
+    return acc;
+  }, {} as Record<SensorId, SensorThresholdConfig>);
+}
+
+export function getDefaultAlarmSettings(): AlarmSettings {
+  return {
+    buzzerEnabled: true,
+    buzzerMuted: false,
+    alarmSensors: SENSOR_IDS.reduce((acc, id) => {
+      acc[id] = true;
+      return acc;
+    }, {} as Record<SensorId, boolean>),
+  };
+}
+
 export const POOL_CONFIGS: PoolConfig[] = [
   {
     id: 'pool-1',
@@ -135,5 +174,7 @@ export const POOL_CONFIGS: PoolConfig[] = [
     location: '',
     sortOrder: 1,
     offsets: { ph: 0, ec: 0, tds: 0, do: 0, ldr: 0, waterTemp: 0, airTemp: 0, humidity: 0 },
+    thresholds: getDefaultSensorThresholds(),
+    alarmSettings: getDefaultAlarmSettings(),
   },
 ];

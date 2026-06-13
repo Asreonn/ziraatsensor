@@ -63,8 +63,12 @@ export function calculateTrend(history: SensorReading[]): TrendDirection {
 
 let anomalyCounter = 0;
 
-export function detectAnomalies(poolId: string, sensorId: SensorId, history: SensorReading[]): Anomaly[] {
-  const config = SENSOR_CONFIGS[sensorId];
+export function detectAnomalies(
+  poolId: string,
+  sensorId: SensorId,
+  history: SensorReading[],
+  config: SensorConfig = SENSOR_CONFIGS[sensorId],
+): Anomaly[] {
   const anomalies: Anomaly[] = [];
   if (history.length < 3) return anomalies;
 

@@ -2,22 +2,44 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { useSensorData } from '@/lib/sensors/DataProvider';
 import { DashboardLayout } from '@/components/dashboard/DashboardLayout';
-import { SENSOR_IDS, SENSOR_CONFIGS, SensorId } from '@/lib/sensors/types';
+import {
+  SENSOR_IDS,
+  SENSOR_CONFIGS,
+  SensorId,
+  SensorThresholdConfig,
+  getDefaultAlarmSettings,
+  getDefaultSensorThresholds,
+} from '@/lib/sensors/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { LogOut, Settings2, SlidersHorizontal, Waves } from 'lucide-react';
+import { BellRing, LogOut, Settings2, SlidersHorizontal, Volume2, VolumeX, Waves } from 'lucide-react';
 import { SensorCalibrationDialog } from '@/components/dashboard/SensorCalibrationDialog';
 import { clearCalibration, loadCalibrations, subscribeCalibrationChanges } from '@/lib/sensors/calibration';
 
 export default function SettingsPage() {
   const { user, signOut } = useAuth();
-  const { refreshInterval, setRefreshInterval, dataMode, setDataMode, devMode, setDevMode, error, pools } = useSensorData();
+  const {
+    refreshInterval,
+    setRefreshInterval,
+    dataMode,
+    setDataMode,
+    devMode,
+    setDevMode,
+    updatePoolThresholds,
+    updatePoolAlarmSettings,
+    error,
+    pools,
+  } = useSensorData();
+  const firstPool = Object.values(pools).sort((left, right) => left.config.sortOrder - right.config.sortOrder)[0];
   const [interval, setInterval] = useState(refreshInterval / 1000);
   const [savingInterval, setSavingInterval] = useState(false);
   const [savingMode, setSavingMode] = useState(false);
   const [savingDev, setSavingDev] = useState(false);
+  const [savingAlarm, setSavingAlarm] = useState(false);
+  const [savingThresholds, setSavingThresholds] = useState(false);
+  const [thresholdDraft, setThresholdDraft] = useState<Record<SensorId, SensorThresholdConfig>>(() => getDefaultSensorThresholds());
   const [calibrationTarget, setCalibrationTarget] = useState<SensorId | null>(null);
   const [calibrations, setCalibrations] = useState(() => loadCalibrations());
 
@@ -29,7 +51,16 @@ export default function SettingsPage() {
     return subscribeCalibrationChanges(() => setCalibrations(loadCalibrations()));
   }, []);
 
-  const firstPool = Object.values(pools)[0];
+  const firstPoolId = firstPool?.config.id;
+  const firstPoolThresholds = firstPool?.config.thresholds;
+
+  useEffect(() => {
+    if (firstPoolThresholds) {
+      setThresholdDraft(firstPoolThresholds);
+    }
+  }, [firstPoolId, firstPoolThresholds]);
+
+  const alarmSettings = firstPool?.config.alarmSettings ?? getDefaultAlarmSettings();
   const liveValueFor = (id: SensorId): number | null => {
     const reading = firstPool?.sensors?.[id]?.current;
     if (!reading || reading.status === 'offline') return null;
@@ -52,6 +83,36 @@ export default function SettingsPage() {
     setSavingDev(true);
     await setDevMode(checked);
     setSavingDev(false);
+  };
+
+  const handleAlarmPatch = async (patch: Parameters<typeof updatePoolAlarmSettings>[1]) => {
+    if (!firstPool) return;
+    setSavingAlarm(true);
+    try {
+      await updatePoolAlarmSettings(firstPool.config.id, patch);
+    } finally {
+      setSavingAlarm(false);
+    }
+  };
+
+  const handleThresholdFieldChange = (id: SensorId, field: keyof SensorThresholdConfig, value: number) => {
+    setThresholdDraft(prev => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [field]: Number.isFinite(value) ? value : 0,
+      },
+    }));
+  };
+
+  const handleThresholdApply = async () => {
+    if (!firstPool) return;
+    setSavingThresholds(true);
+    try {
+      await updatePoolThresholds(firstPool.config.id, thresholdDraft);
+    } finally {
+      setSavingThresholds(false);
+    }
   };
 
   return (
@@ -134,6 +195,62 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <BellRing className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Buzzer Alarmı</h3>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={alarmSettings.buzzerMuted ? 'default' : 'outline'}
+                className="gap-1.5"
+                disabled={!firstPool || savingAlarm}
+                onClick={() => { void handleAlarmPatch({ buzzerMuted: !alarmSettings.buzzerMuted }); }}
+              >
+                {alarmSettings.buzzerMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                {alarmSettings.buzzerMuted ? 'Susturuldu' : 'Sustur'}
+              </Button>
+              <div className="flex items-center gap-2 rounded-full border border-border/70 bg-muted/30 px-3 py-1.5">
+                <span className={`text-xs font-semibold ${alarmSettings.buzzerEnabled ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {alarmSettings.buzzerEnabled ? 'Açık' : 'Kapalı'}
+                </span>
+                <Switch
+                  checked={alarmSettings.buzzerEnabled}
+                  disabled={!firstPool || savingAlarm}
+                  onCheckedChange={checked => { void handleAlarmPatch({ buzzerEnabled: checked }); }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+            {SENSOR_IDS.map(id => {
+              const config = SENSOR_CONFIGS[id];
+              const checked = alarmSettings.alarmSensors[id];
+              return (
+                <div
+                  key={id}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/25 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <span className="block truncate text-xs font-semibold text-foreground">{config.label}</span>
+                    <span className="block text-[10px] text-muted-foreground">{config.unit || 'ölçüm'}</span>
+                  </div>
+                  <Switch
+                    checked={checked}
+                    disabled={!firstPool || savingAlarm}
+                    onCheckedChange={next => { void handleAlarmPatch({ alarmSensors: { [id]: next } }); }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         <details className="group rounded-2xl border border-border/70 bg-card shadow-sm">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3">
             <h3 className="text-sm font-semibold text-foreground">Sensör Eşikleri</h3>
@@ -141,9 +258,24 @@ export default function SettingsPage() {
           </summary>
 
           <div className="space-y-2 border-t border-border/60 px-3 py-3 md:px-4">
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => { void handleThresholdApply(); }}
+                disabled={!firstPool || savingThresholds}
+              >
+                {savingThresholds ? 'Kaydediliyor...' : 'Eşikleri Kaydet'}
+              </Button>
+            </div>
             {SENSOR_IDS.map(id => {
               const c = SENSOR_CONFIGS[id];
               const cal = calibrations[id];
+              const draft = thresholdDraft[id] ?? firstPool?.config.thresholds[id] ?? {
+                warningMin: c.warningMin,
+                warningMax: c.warningMax,
+                criticalMin: c.criticalMin,
+                criticalMax: c.criticalMax,
+              };
               return (
                 <div
                   key={id}
@@ -184,19 +316,43 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                     <div>
                       <Label className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Uyarı Min</Label>
-                      <Input defaultValue={c.warningMin} className="mt-0.5 h-8" type="number" step="0.1" />
+                      <Input
+                        value={draft.warningMin}
+                        onChange={e => handleThresholdFieldChange(id, 'warningMin', Number(e.target.value))}
+                        className="mt-0.5 h-8"
+                        type="number"
+                        step="0.1"
+                      />
                     </div>
                     <div>
                       <Label className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Uyarı Maks</Label>
-                      <Input defaultValue={c.warningMax} className="mt-0.5 h-8" type="number" step="0.1" />
+                      <Input
+                        value={draft.warningMax}
+                        onChange={e => handleThresholdFieldChange(id, 'warningMax', Number(e.target.value))}
+                        className="mt-0.5 h-8"
+                        type="number"
+                        step="0.1"
+                      />
                     </div>
                     <div>
                       <Label className="text-[10px] uppercase tracking-[0.12em] text-status-critical">Kritik Min</Label>
-                      <Input defaultValue={c.criticalMin} className="mt-0.5 h-8" type="number" step="0.1" />
+                      <Input
+                        value={draft.criticalMin}
+                        onChange={e => handleThresholdFieldChange(id, 'criticalMin', Number(e.target.value))}
+                        className="mt-0.5 h-8"
+                        type="number"
+                        step="0.1"
+                      />
                     </div>
                     <div>
                       <Label className="text-[10px] uppercase tracking-[0.12em] text-status-critical">Kritik Maks</Label>
-                      <Input defaultValue={c.criticalMax} className="mt-0.5 h-8" type="number" step="0.1" />
+                      <Input
+                        value={draft.criticalMax}
+                        onChange={e => handleThresholdFieldChange(id, 'criticalMax', Number(e.target.value))}
+                        className="mt-0.5 h-8"
+                        type="number"
+                        step="0.1"
+                      />
                     </div>
                   </div>
                 </div>
