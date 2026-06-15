@@ -41,6 +41,7 @@ import {
 const DEFAULT_REFRESH_INTERVAL = DEFAULT_READING_INTERVAL_MS;
 const MIN_REFRESH_INTERVAL = 1000;
 const MAX_REFRESH_INTERVAL = 60000;
+const MIN_DEVICE_CYCLE_MS = 10000;
 const HISTORY_POINTS = 120;
 const READINGS_LIMIT = 6000;
 
@@ -605,15 +606,16 @@ function evaluateLiveSensorIssue(
     missedCycles: 0,
   };
   const normalizedInterval = normalizeRefreshIntervalMs(expectedIntervalMs);
+  const expectedCycleMs = Math.max(normalizedInterval, MIN_DEVICE_CYCLE_MS);
   const latestAgeMs = latestSensorTimestampMs > 0 ? Date.now() - latestSensorTimestampMs : Number.POSITIVE_INFINITY;
-  const waitingWindowMs = Math.max(normalizedInterval * 2, 3000);
-  const offlineWindowMs = Math.max(normalizedInterval * 3, 5000);
+  const waitingWindowMs = expectedCycleMs * 2;
+  const offlineWindowMs = expectedCycleMs * 3;
   let missedCycles = 0;
 
   if (latestSensorTimestampMs <= 0) {
     missedCycles = poolCycleMs > 0 ? 3 : previous.missedCycles;
   } else if (latestAgeMs >= offlineWindowMs) {
-    missedCycles = Math.max(3, Math.floor(latestAgeMs / normalizedInterval));
+    missedCycles = Math.max(3, Math.floor(latestAgeMs / expectedCycleMs));
   } else if (latestAgeMs >= waitingWindowMs) {
     missedCycles = 2;
   }

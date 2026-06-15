@@ -26,8 +26,10 @@ function rssiLabel(rssi: number): string {
   return 'Zayıf';
 }
 
+const MIN_DEVICE_CYCLE_MS = 10000;
+
 function isFresh(lastSync: Date, expectedIntervalMs: number): boolean {
-  const thresholdMs = Math.max(expectedIntervalMs * 3, 5000);
+  const thresholdMs = Math.max(expectedIntervalMs, MIN_DEVICE_CYCLE_MS) * 3;
   return lastSync.getTime() > 0 && Date.now() - lastSync.getTime() < thresholdMs;
 }
 
