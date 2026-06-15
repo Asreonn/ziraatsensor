@@ -23,8 +23,8 @@ export function hasSystemStatusData(systemInfo: SystemInfo | null | undefined): 
 
 export function getSensorDisplayStatus(sensor: Pick<SensorData, 'current' | 'connectionIssue'>): SensorStatus {
   if (sensor.connectionIssue === 'faulty') return 'offline';
-  if (sensor.connectionIssue === 'missed_once') return 'offline';
   if (!hasSensorReading(sensor.current)) return 'offline';
+  if (sensor.connectionIssue === 'missed_once') return 'warning';
   return sensor.current.status;
 }
 

@@ -51,8 +51,8 @@ interface LiveSensorSyncState {
 }
 
 function getConnectionIssue(missedCycles: number): SensorConnectionIssue {
-  if (missedCycles >= 2) return 'faulty';
-  if (missedCycles === 1) return 'missed_once';
+  if (missedCycles >= 3) return 'faulty';
+  if (missedCycles >= 2) return 'missed_once';
   return 'none';
 }
 
@@ -606,15 +606,16 @@ function evaluateLiveSensorIssue(
   };
   const normalizedInterval = normalizeRefreshIntervalMs(expectedIntervalMs);
   const latestAgeMs = latestSensorTimestampMs > 0 ? Date.now() - latestSensorTimestampMs : Number.POSITIVE_INFINITY;
-  const graceMs = 1000;
+  const waitingWindowMs = Math.max(normalizedInterval * 2, 3000);
+  const offlineWindowMs = Math.max(normalizedInterval * 3, 5000);
   let missedCycles = 0;
 
   if (latestSensorTimestampMs <= 0) {
-    missedCycles = poolCycleMs > 0 ? 2 : previous.missedCycles;
-  } else if (latestAgeMs >= normalizedInterval * 2 + graceMs) {
-    missedCycles = Math.max(2, Math.floor(latestAgeMs / normalizedInterval));
-  } else if (latestAgeMs >= normalizedInterval + graceMs) {
-    missedCycles = 1;
+    missedCycles = poolCycleMs > 0 ? 3 : previous.missedCycles;
+  } else if (latestAgeMs >= offlineWindowMs) {
+    missedCycles = Math.max(3, Math.floor(latestAgeMs / normalizedInterval));
+  } else if (latestAgeMs >= waitingWindowMs) {
+    missedCycles = 2;
   }
 
   syncState[key] = {

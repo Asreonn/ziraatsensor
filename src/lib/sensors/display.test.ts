@@ -51,7 +51,7 @@ describe('sensor display helpers', () => {
     })).toBe(false);
   });
 
-  it('treats missing updates and faulty sensors as offline (no data)', () => {
+  it('keeps missed updates visible but treats faulty sensors as offline', () => {
     expect(getSensorConnectionMessage('missed_once')).toContain('bekleniyor');
     expect(getSensorConnectionMessage('faulty')).toContain('akmıyor');
 
@@ -59,6 +59,11 @@ describe('sensor display helpers', () => {
       current: { value: 0, timestamp: new Date(), status: 'healthy' },
       connectionIssue: 'missed_once',
     })).toBe('Veri bekleniyor');
+
+    expect(getSensorDisplayStatus({
+      current: { value: 0, timestamp: new Date(), status: 'healthy' },
+      connectionIssue: 'missed_once',
+    })).toBe('warning');
 
     expect(getSensorDisplayStatus({
       current: { value: 0, timestamp: new Date(), status: 'healthy' },

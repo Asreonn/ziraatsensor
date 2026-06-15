@@ -27,7 +27,7 @@ function rssiLabel(rssi: number): string {
 }
 
 function isFresh(lastSync: Date, expectedIntervalMs: number): boolean {
-  const thresholdMs = Math.max(expectedIntervalMs * 2 + 1000, 5000);
+  const thresholdMs = Math.max(expectedIntervalMs * 3, 5000);
   return lastSync.getTime() > 0 && Date.now() - lastSync.getTime() < thresholdMs;
 }
 
