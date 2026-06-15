@@ -6,6 +6,8 @@ export type AnomalySeverity = 'low' | 'medium' | 'high';
 export type TrendDirection = 'rising' | 'falling' | 'stable';
 export type DataMode = 'mock' | 'live';
 
+export const DEFAULT_READING_INTERVAL_MS = 3000;
+
 export interface SensorConfig {
   id: SensorId;
   label: string;
@@ -31,6 +33,7 @@ export interface SensorThresholdConfig {
 export interface AlarmSettings {
   buzzerEnabled: boolean;
   buzzerMuted: boolean;
+  readingIntervalMs: number;
   mutedAlarmKey: string | null;
   mutedAt: string | null;
   alarmSensors: Record<SensorId, boolean>;
@@ -88,6 +91,7 @@ export interface EspDiagnostics {
   freeHeap?: number;
   maxBlock?: number;
   adsOk?: boolean;
+  readingIntervalMs?: number;
   rawVoltage?: Partial<Record<SensorId, number>>;
 }
 
@@ -162,6 +166,7 @@ export function getDefaultAlarmSettings(): AlarmSettings {
   return {
     buzzerEnabled: true,
     buzzerMuted: false,
+    readingIntervalMs: DEFAULT_READING_INTERVAL_MS,
     mutedAlarmKey: null,
     mutedAt: null,
     alarmSensors: SENSOR_IDS.reduce((acc, id) => {

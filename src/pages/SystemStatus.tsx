@@ -239,6 +239,7 @@ export default function SystemStatus() {
                       {typeof diag.freeHeap === 'number' && <span>heap: {diag.freeHeap} B</span>}
                       {typeof diag.maxBlock === 'number' && <span>maxBlock: {diag.maxBlock} B</span>}
                       {typeof diag.adsOk === 'boolean' && <span>ADS: {diag.adsOk ? 'OK' : 'HATA'}</span>}
+                      {typeof diag.readingIntervalMs === 'number' && <span>interval: {(diag.readingIntervalMs / 1000).toFixed(1)} sn</span>}
                       {Object.entries(raw).map(([id, v]) => (
                         <span key={id}>{id}: {Number(v).toFixed(3)} V</span>
                       ))}

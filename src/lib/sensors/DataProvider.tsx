@@ -6,6 +6,7 @@ import {
   AlarmSettings,
   Anomaly,
   DataMode,
+  DEFAULT_READING_INTERVAL_MS,
   EspDiagnostics,
   PoolConfig,
   PoolData,
@@ -37,7 +38,9 @@ import {
   subscribeCalibrationChanges,
 } from './calibration';
 
-const DEFAULT_REFRESH_INTERVAL = 3000;
+const DEFAULT_REFRESH_INTERVAL = DEFAULT_READING_INTERVAL_MS;
+const MIN_REFRESH_INTERVAL = 1000;
+const MAX_REFRESH_INTERVAL = 60000;
 const HISTORY_POINTS = 120;
 const READINGS_LIMIT = 6000;
 
@@ -51,6 +54,11 @@ function getConnectionIssue(missedCycles: number): SensorConnectionIssue {
   if (missedCycles >= 2) return 'faulty';
   if (missedCycles === 1) return 'missed_once';
   return 'none';
+}
+
+function normalizeRefreshIntervalMs(ms: number): number {
+  if (!Number.isFinite(ms)) return DEFAULT_REFRESH_INTERVAL;
+  return Math.min(MAX_REFRESH_INTERVAL, Math.max(MIN_REFRESH_INTERVAL, Math.round(ms)));
 }
 
 interface SensorContextValue {
@@ -142,6 +150,9 @@ function normalizeAlarmSettings(input: unknown): AlarmSettings {
   const raw = input as Record<string, unknown>;
   if (typeof raw.buzzerEnabled === 'boolean') settings.buzzerEnabled = raw.buzzerEnabled;
   if (typeof raw.buzzerMuted === 'boolean') settings.buzzerMuted = raw.buzzerMuted;
+  if (typeof raw.readingIntervalMs === 'number') {
+    settings.readingIntervalMs = normalizeRefreshIntervalMs(raw.readingIntervalMs);
+  }
   if (typeof raw.mutedAlarmKey === 'string') settings.mutedAlarmKey = raw.mutedAlarmKey;
   if (raw.mutedAlarmKey === null) settings.mutedAlarmKey = null;
   if (typeof raw.mutedAt === 'string') settings.mutedAt = raw.mutedAt;
@@ -167,6 +178,17 @@ function mergeAlarmSettings(current: AlarmSettings, patch: AlarmSettingsPatch): 
       ...(patch.alarmSensors ?? {}),
     },
   };
+}
+
+function applyReadingIntervalToConfigs(poolConfigs: PoolConfig[], readingIntervalMs: number): PoolConfig[] {
+  const nextInterval = normalizeRefreshIntervalMs(readingIntervalMs);
+  return poolConfigs.map(pool => ({
+    ...pool,
+    alarmSettings: {
+      ...pool.alarmSettings,
+      readingIntervalMs: nextInterval,
+    },
+  }));
 }
 
 function getPoolSensorConfig(poolConfig: PoolConfig, sensorId: SensorId): SensorConfig {
@@ -460,6 +482,7 @@ function normalizeDiagnostics(input: unknown): EspDiagnostics {
   if (typeof obj.freeHeap === 'number') out.freeHeap = obj.freeHeap;
   if (typeof obj.maxBlock === 'number') out.maxBlock = obj.maxBlock;
   if (typeof obj.adsOk === 'boolean') out.adsOk = obj.adsOk;
+  if (typeof obj.readingIntervalMs === 'number') out.readingIntervalMs = normalizeRefreshIntervalMs(obj.readingIntervalMs);
 
   const raw = obj.rawVoltage;
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
@@ -572,12 +595,29 @@ function evaluateLiveSensorIssue(
   poolCycleMs: number,
   latestSensorTimestampMs: number,
   syncState: Record<string, LiveSensorSyncState>,
+  expectedIntervalMs: number,
 ) {
   const previous = syncState[key] ?? {
     lastObservedCycleMs: 0,
     lastSensorTimestampMs: 0,
     missedCycles: 0,
   };
+  const normalizedInterval = normalizeRefreshIntervalMs(expectedIntervalMs);
+  const freshWindowMs = Math.max(normalizedInterval * 2, normalizedInterval + 5000);
+  const latestAgeMs = latestSensorTimestampMs > 0 ? Date.now() - latestSensorTimestampMs : Number.POSITIVE_INFINITY;
+
+  if (latestAgeMs <= freshWindowMs) {
+    syncState[key] = {
+      lastObservedCycleMs: Math.max(poolCycleMs, previous.lastObservedCycleMs),
+      lastSensorTimestampMs: Math.max(previous.lastSensorTimestampMs, latestSensorTimestampMs),
+      missedCycles: 0,
+    };
+
+    return {
+      issue: 'none' as const,
+      missedCycles: 0,
+    };
+  }
 
   if (poolCycleMs <= 0) {
     syncState[key] = {
@@ -644,6 +684,7 @@ async function fetchLivePools(
   readState: Record<string, string[]>,
   syncState: Record<string, LiveSensorSyncState>,
   calibrations: CalibrationMap,
+  expectedIntervalMs: number,
 ): Promise<Record<string, PoolData>> {
   if (!supabase || poolConfigs.length === 0) return {};
 
@@ -686,7 +727,7 @@ async function fetchLivePools(
       const config = getPoolSensorConfig(poolConfig, sensorId);
       const history = applyStatusToHistory(groupedReadings[key] ?? [createOfflineReading(sensorId)], config);
       const latestSensorTimestampMs = getLatestReadingTimestamp(history);
-      const connectionState = evaluateLiveSensorIssue(key, poolCycleMs, latestSensorTimestampMs, syncState);
+      const connectionState = evaluateLiveSensorIssue(key, poolCycleMs, latestSensorTimestampMs, syncState, expectedIntervalMs);
       const derived = deriveAnomaliesFromHistory(poolConfig.id, sensorId, history, config).map(anomaly => ({
         ...anomaly,
         read: (readState[key] ?? []).includes(anomaly.id),
@@ -763,6 +804,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (persistError) throw persistError;
   }, [dataMode, devMode, refreshInterval, user]);
 
+  const persistPoolReadingIntervals = useCallback(async (configs: PoolConfig[], readingIntervalMs: number) => {
+    if (!supabase || !user || configs.length === 0) return;
+
+    const nextInterval = normalizeRefreshIntervalMs(readingIntervalMs);
+    const updates = await Promise.all(configs.map(pool => {
+      const nextSettings = mergeAlarmSettings(pool.alarmSettings, { readingIntervalMs: nextInterval });
+      return supabase
+        .from('pools')
+        .update({ alarm_settings: nextSettings as unknown as Json })
+        .eq('id', pool.id);
+    }));
+    const firstError = updates.find(result => result.error)?.error;
+    if (firstError) throw firstError;
+  }, [user]);
+
   const setDevMode = useCallback(async (enabled: boolean) => {
     setDevModeState(enabled);
     try {
@@ -830,14 +886,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [dataMode]);
 
   const setRefreshInterval = useCallback(async (ms: number) => {
-    const next = Math.min(60000, Math.max(1000, ms));
+    const next = normalizeRefreshIntervalMs(ms);
+    const nextPoolConfigs = applyReadingIntervalToConfigs(poolConfigs, next);
     setRefreshIntervalState(next);
+    setPoolConfigs(nextPoolConfigs);
+    setPools(prev => {
+      const updated = { ...prev };
+      nextPoolConfigs.forEach(config => {
+        const pool = updated[config.id];
+        if (pool) {
+          updated[config.id] = {
+            ...pool,
+            config,
+          };
+        }
+      });
+      return updated;
+    });
     try {
       await persistPreferences({ refresh_interval_ms: next });
+      await persistPoolReadingIntervals(nextPoolConfigs, next);
     } catch (persistError) {
-      setError(persistError instanceof Error ? persistError.message : 'Refresh interval kaydedilemedi.');
+      setError(persistError instanceof Error ? persistError.message : 'Veri yenileme araligi kaydedilemedi.');
     }
-  }, [persistPreferences]);
+  }, [persistPoolReadingIntervals, persistPreferences, poolConfigs]);
 
   const setDataMode = useCallback(async (mode: DataMode) => {
     setDataModeState(mode);
@@ -952,9 +1024,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       throw poolsError;
     }
 
-    setPoolConfigs((poolsData ?? []).map(mapPoolRowToConfig));
+    const nextPoolConfigs = applyReadingIntervalToConfigs((poolsData ?? []).map(mapPoolRowToConfig), refreshInterval);
+    setPoolConfigs(nextPoolConfigs);
+    void persistPoolReadingIntervals(nextPoolConfigs, refreshInterval).catch(syncError => {
+      setError(syncError instanceof Error ? syncError.message : 'ESP veri araligi esitlemesi kaydedilemedi.');
+    });
     return data;
-  }, [user]);
+  }, [persistPoolReadingIntervals, refreshInterval, user]);
 
   const claimPool = useCallback(async ({ poolId, name, location }: { poolId: string; name?: string; location?: string }) => {
     if (!supabase || !user) {
@@ -995,9 +1071,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       throw poolsError;
     }
 
-    setPoolConfigs((poolsData ?? []).map(mapPoolRowToConfig));
+    const nextPoolConfigs = applyReadingIntervalToConfigs((poolsData ?? []).map(mapPoolRowToConfig), refreshInterval);
+    setPoolConfigs(nextPoolConfigs);
+    void persistPoolReadingIntervals(nextPoolConfigs, refreshInterval).catch(syncError => {
+      setError(syncError instanceof Error ? syncError.message : 'ESP veri araligi esitlemesi kaydedilemedi.');
+    });
     return data;
-  }, [user]);
+  }, [persistPoolReadingIntervals, refreshInterval, user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1043,12 +1123,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         if (poolsError) throw poolsError;
         if (cancelled) return;
 
-        const nextPoolConfigs = (poolsData ?? []).map(mapPoolRowToConfig);
+        const nextRefreshInterval = normalizeRefreshIntervalMs(preferences?.refresh_interval_ms ?? DEFAULT_REFRESH_INTERVAL);
+        const nextPoolConfigs = applyReadingIntervalToConfigs((poolsData ?? []).map(mapPoolRowToConfig), nextRefreshInterval);
         setPoolConfigs(nextPoolConfigs);
-        setRefreshIntervalState(preferences?.refresh_interval_ms ?? DEFAULT_REFRESH_INTERVAL);
+        setRefreshIntervalState(nextRefreshInterval);
         setDataModeState(preferences?.use_mock_data === false ? 'live' : 'mock');
         setDevModeState(preferences?.dev_mode === true);
         setWorkspaceReady(true);
+        void persistPoolReadingIntervals(nextPoolConfigs, nextRefreshInterval).catch(syncError => {
+          if (!cancelled) {
+            setError(syncError instanceof Error ? syncError.message : 'ESP veri araligi esitlemesi kaydedilemedi.');
+          }
+        });
       } catch (workspaceError) {
         if (cancelled) return;
         setError(workspaceError instanceof Error ? workspaceError.message : 'Workspace yuklenemedi.');
@@ -1063,7 +1149,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [persistPoolReadingIntervals, user]);
 
   useEffect(() => {
     if (!workspaceReady) return undefined;
@@ -1093,7 +1179,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const snapshot = await fetchLivePools(poolConfigs, readAnomalyIdsRef.current, liveSensorSyncStateRef.current, calibrations);
+        const snapshot = await fetchLivePools(
+          poolConfigs,
+          readAnomalyIdsRef.current,
+          liveSensorSyncStateRef.current,
+          calibrations,
+          refreshInterval,
+        );
         if (cancelled) return;
         setPools(snapshot);
         setError(null);

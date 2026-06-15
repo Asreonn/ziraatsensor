@@ -80,6 +80,17 @@ export function buildDevNotices(pool: PoolData, calibrations: CalibrationMap): D
       detail: `Bos heap ${diag.freeHeap} bayt. TLS gonderimleri basarisiz olabilir (HTTP -1/-5).`,
     });
   }
+  if (
+    typeof diag.readingIntervalMs === 'number' &&
+    Math.abs(diag.readingIntervalMs - pool.config.alarmSettings.readingIntervalMs) > 500
+  ) {
+    notices.push({
+      id: 'esp-interval-sync',
+      level: 'warning',
+      title: 'ESP veri araligi senkron degil',
+      detail: `Site ${pool.config.alarmSettings.readingIntervalMs} ms bekliyor, ESP ${diag.readingIntervalMs} ms raporluyor. Bir sonraki ayar cekisinde esitleme beklenir.`,
+    });
+  }
 
   return notices;
 }
