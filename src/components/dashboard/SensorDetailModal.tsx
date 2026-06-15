@@ -74,6 +74,7 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
   const hasReading = hasSensorReading(current);
   const connectionMessage = getSensorConnectionMessage(sensor.connectionIssue);
   const displayStatus = getSensorDisplayStatus(sensor);
+  const showOfflineValue = displayStatus === 'offline' || !hasReading;
 
   const sensorAnomalies = anomalies.filter(a => a.sensorId === config.id);
 
@@ -104,9 +105,9 @@ export function SensorDetailModal({ open, onOpenChange, sensor, anomalies, poolN
             </div>
             <div className="shrink-0 text-right">
               <span className="font-display text-2xl font-semibold tabular-nums text-foreground md:text-3xl">
-                {formatSensorValue(current, config.id)}
+                {showOfflineValue ? '--' : formatSensorValue(current, config.id)}
               </span>
-              {config.unit && hasReading && <span className="ml-1 text-xs text-muted-foreground md:text-sm">{config.unit}</span>}
+              {config.unit && !showOfflineValue && <span className="ml-1 text-xs text-muted-foreground md:text-sm">{config.unit}</span>}
             </div>
           </div>
         </DialogHeader>

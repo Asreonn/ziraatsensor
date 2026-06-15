@@ -483,6 +483,8 @@ function normalizeDiagnostics(input: unknown): EspDiagnostics {
   if (typeof obj.maxBlock === 'number') out.maxBlock = obj.maxBlock;
   if (typeof obj.adsOk === 'boolean') out.adsOk = obj.adsOk;
   if (typeof obj.readingIntervalMs === 'number') out.readingIntervalMs = normalizeRefreshIntervalMs(obj.readingIntervalMs);
+  if (typeof obj.cachedSettingsLoaded === 'boolean') out.cachedSettingsLoaded = obj.cachedSettingsLoaded;
+  if (typeof obj.settingsSaveCount === 'number') out.settingsSaveCount = obj.settingsSaveCount;
 
   const raw = obj.rawVoltage;
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
@@ -603,79 +605,27 @@ function evaluateLiveSensorIssue(
     missedCycles: 0,
   };
   const normalizedInterval = normalizeRefreshIntervalMs(expectedIntervalMs);
-  const freshWindowMs = Math.max(normalizedInterval * 2, normalizedInterval + 5000);
   const latestAgeMs = latestSensorTimestampMs > 0 ? Date.now() - latestSensorTimestampMs : Number.POSITIVE_INFINITY;
+  const graceMs = 1000;
+  let missedCycles = 0;
 
-  if (latestAgeMs <= freshWindowMs) {
-    syncState[key] = {
-      lastObservedCycleMs: Math.max(poolCycleMs, previous.lastObservedCycleMs),
-      lastSensorTimestampMs: Math.max(previous.lastSensorTimestampMs, latestSensorTimestampMs),
-      missedCycles: 0,
-    };
-
-    return {
-      issue: 'none' as const,
-      missedCycles: 0,
-    };
+  if (latestSensorTimestampMs <= 0) {
+    missedCycles = poolCycleMs > 0 ? 2 : previous.missedCycles;
+  } else if (latestAgeMs >= normalizedInterval * 2 + graceMs) {
+    missedCycles = Math.max(2, Math.floor(latestAgeMs / normalizedInterval));
+  } else if (latestAgeMs >= normalizedInterval + graceMs) {
+    missedCycles = 1;
   }
 
-  if (poolCycleMs <= 0) {
-    syncState[key] = {
-      ...previous,
-      lastSensorTimestampMs: Math.max(previous.lastSensorTimestampMs, latestSensorTimestampMs),
-      missedCycles: latestSensorTimestampMs > previous.lastSensorTimestampMs ? 0 : previous.missedCycles,
-    };
-
-    return {
-      issue: getConnectionIssue(syncState[key].missedCycles),
-      missedCycles: syncState[key].missedCycles,
-    };
-  }
-
-  if (previous.lastObservedCycleMs === 0) {
-    const missedCycles = latestSensorTimestampMs > 0 ? 0 : 1;
-    syncState[key] = {
-      lastObservedCycleMs: poolCycleMs,
-      lastSensorTimestampMs: latestSensorTimestampMs,
-      missedCycles,
-    };
-
-    return {
-      issue: getConnectionIssue(missedCycles),
-      missedCycles,
-    };
-  }
-
-  if (latestSensorTimestampMs > previous.lastSensorTimestampMs) {
-    syncState[key] = {
-      lastObservedCycleMs: Math.max(poolCycleMs, previous.lastObservedCycleMs),
-      lastSensorTimestampMs: latestSensorTimestampMs,
-      missedCycles: 0,
-    };
-
-    return {
-      issue: 'none' as const,
-      missedCycles: 0,
-    };
-  }
-
-  if (poolCycleMs > previous.lastObservedCycleMs) {
-    const missedCycles = previous.missedCycles + 1;
-    syncState[key] = {
-      lastObservedCycleMs: poolCycleMs,
-      lastSensorTimestampMs: latestSensorTimestampMs,
-      missedCycles,
-    };
-
-    return {
-      issue: getConnectionIssue(missedCycles),
-      missedCycles,
-    };
-  }
+  syncState[key] = {
+    lastObservedCycleMs: Math.max(poolCycleMs, previous.lastObservedCycleMs),
+    lastSensorTimestampMs: Math.max(previous.lastSensorTimestampMs, latestSensorTimestampMs),
+    missedCycles,
+  };
 
   return {
-    issue: getConnectionIssue(previous.missedCycles),
-    missedCycles: previous.missedCycles,
+    issue: getConnectionIssue(missedCycles),
+    missedCycles,
   };
 }
 
@@ -727,7 +677,13 @@ async function fetchLivePools(
       const config = getPoolSensorConfig(poolConfig, sensorId);
       const history = applyStatusToHistory(groupedReadings[key] ?? [createOfflineReading(sensorId)], config);
       const latestSensorTimestampMs = getLatestReadingTimestamp(history);
-      const connectionState = evaluateLiveSensorIssue(key, poolCycleMs, latestSensorTimestampMs, syncState, expectedIntervalMs);
+      const connectionState = evaluateLiveSensorIssue(
+        key,
+        poolCycleMs,
+        latestSensorTimestampMs,
+        syncState,
+        poolConfig.alarmSettings.readingIntervalMs || expectedIntervalMs,
+      );
       const derived = deriveAnomaliesFromHistory(poolConfig.id, sensorId, history, config).map(anomaly => ({
         ...anomaly,
         read: (readState[key] ?? []).includes(anomaly.id),

@@ -92,6 +92,8 @@ export interface EspDiagnostics {
   maxBlock?: number;
   adsOk?: boolean;
   readingIntervalMs?: number;
+  cachedSettingsLoaded?: boolean;
+  settingsSaveCount?: number;
   rawVoltage?: Partial<Record<SensorId, number>>;
 }
 

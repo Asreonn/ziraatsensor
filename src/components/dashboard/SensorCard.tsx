@@ -115,7 +115,7 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
       </div>
 
       <div className="mt-3 rounded-xl border border-border/60 bg-muted/30 p-2">
-        {hasReading ? (
+        {!showOfflineValue ? (
           <SparklineChart data={history.slice(-30)} color={sparkColors[displayStatus]} height={36} />
         ) : (
           <div className="flex h-9 items-center justify-center text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground/80">
@@ -125,7 +125,7 @@ export function SensorCard({ data, onClick }: SensorCardProps) {
       </div>
 
       <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-        {hasReading ? `Güncellendi · ${timeAgo(current.timestamp)}` : 'Veri akmıyor'}
+        {!showOfflineValue ? `Güncellendi · ${timeAgo(current.timestamp)}` : 'Veri akmıyor'}
       </div>
     </button>
   );

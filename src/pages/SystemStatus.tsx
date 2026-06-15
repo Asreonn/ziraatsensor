@@ -26,10 +26,9 @@ function rssiLabel(rssi: number): string {
   return 'Zayıf';
 }
 
-const STALE_THRESHOLD_MS = 60_000;
-
-function isFresh(lastSync: Date): boolean {
-  return lastSync.getTime() > 0 && Date.now() - lastSync.getTime() < STALE_THRESHOLD_MS;
+function isFresh(lastSync: Date, expectedIntervalMs: number): boolean {
+  const thresholdMs = Math.max(expectedIntervalMs * 2 + 1000, 5000);
+  return lastSync.getTime() > 0 && Date.now() - lastSync.getTime() < thresholdMs;
 }
 
 export default function SystemStatus() {
@@ -135,7 +134,7 @@ export default function SystemStatus() {
         </div>
 
         {poolList.map(pool => {
-          const fresh = isFresh(pool.systemInfo.lastSync);
+          const fresh = isFresh(pool.systemInfo.lastSync, pool.config.alarmSettings.readingIntervalMs);
           const statusLabel = !hasSystemStatusData(pool.systemInfo)
             ? 'Veri yok'
             : fresh
@@ -240,6 +239,8 @@ export default function SystemStatus() {
                       {typeof diag.maxBlock === 'number' && <span>maxBlock: {diag.maxBlock} B</span>}
                       {typeof diag.adsOk === 'boolean' && <span>ADS: {diag.adsOk ? 'OK' : 'HATA'}</span>}
                       {typeof diag.readingIntervalMs === 'number' && <span>interval: {(diag.readingIntervalMs / 1000).toFixed(1)} sn</span>}
+                      {typeof diag.cachedSettingsLoaded === 'boolean' && <span>cache: {diag.cachedSettingsLoaded ? 'OK' : 'varsayilan'}</span>}
+                      {typeof diag.settingsSaveCount === 'number' && <span>cacheWrite: {diag.settingsSaveCount}</span>}
                       {Object.entries(raw).map(([id, v]) => (
                         <span key={id}>{id}: {Number(v).toFixed(3)} V</span>
                       ))}
