@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1360" height="700" viewBox="0 0 1360 700" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig07-title fig07-desc">
+  <title id="fig07-title">Veri güncelliği durum modeli</title>
+  <desc id="fig07-desc">Veri güncelliği durum modeli</desc>
+  <defs>
+    <style>
+      .text { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; letter-spacing: 0; }
+      .mono { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; letter-spacing: 0; }
+    </style>
+  </defs>
+  <rect width="1360" height="700" fill="#FFFFFF"/>
+  
+    <line x1="120" y1="260" x2="1240" y2="260" stroke="#475569" stroke-width="1.4"/>
+    <circle cx="220" cy="260" r="11" fill="#ECF4EF" stroke="#3F7459" stroke-width="1.6" />
+    <circle cx="590" cy="260" r="11" fill="#F8F2E6" stroke="#9B7330" stroke-width="1.6" />
+    <circle cx="980" cy="260" r="11" fill="#F8EDED" stroke="#9C5050" stroke-width="1.6" />
+    
+    <g>
+      <rect x="115" y="95" width="250" height="110" rx="4" fill="#FFFFFF" stroke="#3F7459" stroke-width="1.2"/>
+      <rect x="115" y="95" width="250" height="40" rx="4" fill="#ECF4EF"/>
+      <rect x="115" y="131" width="250" height="4" fill="#ECF4EF"/>
+      <line x1="115" y1="135" x2="365" y2="135" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="131" y="120" text-anchor="start" font-size="15.5" font-weight="700" fill="#3F7459"><tspan x="131" dy="0">Canlı</tspan></text>
+      <text class="text" x="131" y="163" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="131" dy="0">son kayıt beklenen çevrim</tspan><tspan x="131" dy="18">içinde</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="485" y="95" width="250" height="110" rx="4" fill="#FFFFFF" stroke="#9B7330" stroke-width="1.2"/>
+      <rect x="485" y="95" width="250" height="40" rx="4" fill="#F8F2E6"/>
+      <rect x="485" y="131" width="250" height="4" fill="#F8F2E6"/>
+      <line x1="485" y1="135" x2="735" y2="135" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="501" y="120" text-anchor="start" font-size="15.5" font-weight="700" fill="#9B7330"><tspan x="501" dy="0">Veri bekleniyor</tspan></text>
+      <text class="text" x="501" y="163" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="501" dy="0">yaklaşık iki çevrim gecikme</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="875" y="95" width="250" height="110" rx="4" fill="#FFFFFF" stroke="#9C5050" stroke-width="1.2"/>
+      <rect x="875" y="95" width="250" height="40" rx="4" fill="#F8EDED"/>
+      <rect x="875" y="131" width="250" height="4" fill="#F8EDED"/>
+      <line x1="875" y1="135" x2="1125" y2="135" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="891" y="120" text-anchor="start" font-size="15.5" font-weight="700" fill="#9C5050"><tspan x="891" dy="0">Veri yok</tspan></text>
+      <text class="text" x="891" y="163" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="891" dy="0">yaklaşık üç çevrim ve üzeri</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="369" y="251" width="72" height="18" rx="3" fill="#FFFFFF" stroke="#9B7330" stroke-width="1"/>
+      <text class="text" x="405" y="264" text-anchor="middle" font-size="11" font-weight="750" fill="#9B7330"><tspan x="405" dy="0">2 çevrim</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="749" y="251" width="72" height="18" rx="3" fill="#FFFFFF" stroke="#9C5050" stroke-width="1"/>
+      <text class="text" x="785" y="264" text-anchor="middle" font-size="11" font-weight="750" fill="#9C5050"><tspan x="785" dy="0">3 çevrim</tspan></text>
+    </g>
+    <line x1="220" y1="430" x2="220.00" y2="285.00" stroke="#3F7459" stroke-width="1.5"/><polygon points="220,274 225.50,285.00 214.50,285.00" fill="#3F7459"/>
+    <text class="text" x="220" y="446" text-anchor="middle" font-size="11" font-weight="750" fill="#3F7459"><tspan x="220" dy="0">yeni kayıt</tspan></text>
+    <line x1="590" y1="430" x2="590.00" y2="285.00" stroke="#3F7459" stroke-width="1.5"/><polygon points="590,274 595.50,285.00 584.50,285.00" fill="#3F7459"/>
+    <text class="text" x="590" y="446" text-anchor="middle" font-size="11" font-weight="750" fill="#3F7459"><tspan x="590" dy="0">yeni kayıt</tspan></text>
+    
+    <g>
+      <rect x="380" y="500" width="620" height="110" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.2"/>
+      <rect x="380" y="500" width="620" height="40" rx="4" fill="#F3F4F6"/>
+      <rect x="380" y="536" width="620" height="4" fill="#F3F4F6"/>
+      <line x1="380" y1="540" x2="1000" y2="540" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="396" y="525" text-anchor="start" font-size="15.5" font-weight="700" fill="#1F2937"><tspan x="396" dy="0">Çevrim temeli</tspan></text>
+      <text class="text" x="396" y="568" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="396" dy="0">readingIntervalMs ve gözlenen son sensör zaman damgası birlikte</tspan><tspan x="396" dy="18">değerlendirilir</tspan></text>
+    </g>
+  
+</svg>

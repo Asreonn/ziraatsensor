@@ -1,13 +1,156 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 152 38% 88%;
+    --foreground: 162 42% 12%;
+
+    --card: 150 44% 94%;
+    --card-foreground: 162 42% 12%;
+
+    --popover: 150 44% 94%;
+    --popover-foreground: 162 42% 12%;
+
+    --primary: 158 78% 34%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 150 50% 82%;
+    --secondary-foreground: 162 42% 12%;
+
+    --muted: 150 32% 84%;
+    --muted-foreground: 162 22% 28%;
+
+    --accent: 170 60% 80%;
+    --accent-foreground: 168 60% 16%;
+
+    --destructive: 8 80% 54%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 152 28% 72%;
+    --input: 152 28% 72%;
+    --ring: 158 78% 34%;
+
+    --radius: 0.625rem;
+
+    --status-healthy: 158 72% 36%;
+    --status-warning: 36 96% 50%;
+    --status-critical: 8 80% 54%;
+    --status-offline: 162 12% 50%;
+
+    --surface-1: 152 38% 88%;
+    --surface-2: 150 44% 94%;
+    --surface-elevated: 150 50% 97%;
+
+    --sidebar-background: 160 32% 28%;
+    --sidebar-foreground: 150 28% 94%;
+    --sidebar-primary: 88 78% 64%;
+    --sidebar-primary-foreground: 162 60% 12%;
+    --sidebar-accent: 160 28% 36%;
+    --sidebar-accent-foreground: 150 28% 96%;
+    --sidebar-border: 160 24% 40%;
+    --sidebar-ring: 88 78% 64%;
+  }
+
+  .dark {
+    --background: 162 50% 7%;
+    --foreground: 142 20% 92%;
+
+    --card: 161 39% 10%;
+    --card-foreground: 142 20% 92%;
+
+    --popover: 161 39% 10%;
+    --popover-foreground: 142 20% 92%;
+
+    --primary: 151 82% 46%;
+    --primary-foreground: 161 50% 7%;
+
+    --secondary: 161 22% 16%;
+    --secondary-foreground: 142 20% 92%;
+
+    --muted: 161 22% 16%;
+    --muted-foreground: 148 12% 62%;
+
+    --accent: 161 22% 16%;
+    --accent-foreground: 142 20% 92%;
+
+    --destructive: 15 77% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 162 20% 18%;
+    --input: 162 20% 18%;
+    --ring: 151 82% 46%;
+
+    --status-healthy: 151 62% 47%;
+    --status-warning: 77 81% 55%;
+    --status-critical: 15 76% 56%;
+    --status-offline: 161 9% 40%;
+
+    --surface-1: 162 50% 7%;
+    --surface-2: 161 39% 10%;
+    --surface-elevated: 162 26% 13%;
+
+    --sidebar-background: 163 61% 7%;
+    --sidebar-foreground: 144 24% 82%;
+    --sidebar-primary: 81 88% 58%;
+    --sidebar-primary-foreground: 162 55% 10%;
+    --sidebar-accent: 162 39% 13%;
+    --sidebar-accent-foreground: 144 20% 96%;
+    --sidebar-border: 162 32% 14%;
+    --sidebar-ring: 151 82% 46%;
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: "Manrope", sans-serif;
+    background-image:
+      radial-gradient(circle at 12% -8%, hsl(88 70% 70% / 0.55), transparent 38%),
+      radial-gradient(circle at 92% 4%, hsl(178 56% 64% / 0.45), transparent 42%),
+      radial-gradient(circle at 50% 110%, hsl(158 60% 60% / 0.32), transparent 50%),
+      linear-gradient(180deg, hsl(152 36% 86%), hsl(var(--background)));
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(10, 60, 45, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(10, 60, 45, 0.045) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: radial-gradient(circle at center, black, transparent 88%);
+    opacity: 0.28;
+    z-index: -1;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Space Grotesk", "Manrope", sans-serif;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }

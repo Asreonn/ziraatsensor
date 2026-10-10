@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1240" height="1754" viewBox="0 0 1240 1754" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="report-page-10-title report-page-10-desc">
+  <title id="report-page-10-title">Sonuç</title>
+  <desc id="report-page-10-desc">Sonuç</desc>
+  <defs>
+    <style>
+      .text { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; letter-spacing: 0; }
+      .mono { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; letter-spacing: 0; }
+    </style>
+  </defs>
+  <rect width="1240" height="1754" fill="#FFFFFF"/>
+  <text class="text" x="95" y="120" text-anchor="start" font-size="30" font-weight="800" fill="#1F2937"><tspan x="95" dy="0">Sonuç</tspan></text><text class="text" x="95" y="190" text-anchor="start" font-size="20" font-weight="500" fill="#374151"><tspan x="95" dy="0">Geliştirilen mimari sensör ölçümü, veri saklama, canlı panel, alarm olay kaydı ve</tspan><tspan x="95" dy="30">kullanıcıya bağlı cihaz yönetimini destekler.</tspan></text><text class="text" x="95" y="274" text-anchor="start" font-size="20" font-weight="500" fill="#374151"><tspan x="95" dy="0">Final rapora gerçek deney koşulları, kalibrasyon yöntemi, ölçüm sonuçları,</tspan><tspan x="95" dy="30">hata/kararlılık analizi ve sınırlılıklar eklenmelidir.</tspan></text><line x1="95" y1="1620" x2="1145" y2="1620" stroke="#CBD5E1"/><text class="text" x="95" y="1660" text-anchor="start" font-size="13" font-weight="500" fill="#6B7280"><tspan x="95" dy="0">AICO 2209-A Final Rapor Taslağı</tspan></text><text class="text" x="1145" y="1660" text-anchor="end" font-size="13" font-weight="500" fill="#6B7280"><tspan x="1145" dy="0">10</tspan></text>
+</svg>

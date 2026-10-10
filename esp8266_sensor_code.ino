@@ -14,7 +14,7 @@ const char* password = "YOUR_WIFI_PASSWORD";
 DHT dht(DHT_PIN, DHT_TYPE);
 
 // ——— Server Ayarları ———
-const char* serverURL = "https://ziraatsensor-4cpbikg9m-asrins-projects.vercel.app/api/sensor-data";
+const char* serverURL = "https://ziraatsensor.vercel.app/api/sensor-data";
 
 // ——— Analog Sensör Kontrol Pinleri (Kullanıcı Tablosuna Göre) ———
 const int PH_PWR_PIN       = D5;  // GPIO14 - pH modülü VIN kontrolü

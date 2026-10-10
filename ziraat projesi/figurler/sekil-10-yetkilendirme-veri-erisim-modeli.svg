@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1300" height="610" viewBox="0 0 1300 610" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig10-title fig10-desc">
+  <title id="fig10-title">Yetkilendirme ve veri erişim modeli</title>
+  <desc id="fig10-desc">Yetkilendirme ve veri erişim modeli</desc>
+  <defs>
+    <style>
+      .text { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; letter-spacing: 0; }
+      .mono { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; letter-spacing: 0; }
+    </style>
+  </defs>
+  <rect width="1300" height="610" fill="#FFFFFF"/>
+  
+    
+    <g>
+      <rect x="80" y="120" width="280" height="105" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.2"/>
+      <rect x="80" y="120" width="280" height="40" rx="4" fill="#F3F4F6"/>
+      <rect x="80" y="156" width="280" height="4" fill="#F3F4F6"/>
+      <line x1="80" y1="160" x2="360" y2="160" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="96" y="145" text-anchor="start" font-size="15.5" font-weight="700" fill="#1F2937"><tspan x="96" dy="0">İstemci</tspan></text>
+      <text class="text" x="96" y="188" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="96" dy="0">anon key</tspan></text><text class="text" x="96" y="210" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="96" dy="0">auth session</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="500" y="120" width="280" height="105" rx="4" fill="#FFFFFF" stroke="#3F7459" stroke-width="1.2"/>
+      <rect x="500" y="120" width="280" height="40" rx="4" fill="#ECF4EF"/>
+      <rect x="500" y="156" width="280" height="4" fill="#ECF4EF"/>
+      <line x1="500" y1="160" x2="780" y2="160" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="516" y="145" text-anchor="start" font-size="15.5" font-weight="700" fill="#3F7459"><tspan x="516" dy="0">RLS ilkesi</tspan></text>
+      <text class="mono" x="516" y="188" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="516" dy="0">pools.user_id = auth.uid()</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="920" y="60" width="300" height="130" rx="4" fill="#FFFFFF" stroke="#3F7459" stroke-width="1.2"/>
+      <rect x="920" y="60" width="300" height="40" rx="4" fill="#ECF4EF"/>
+      <rect x="920" y="96" width="300" height="4" fill="#ECF4EF"/>
+      <line x1="920" y1="100" x2="1220" y2="100" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="936" y="85" text-anchor="start" font-size="15.5" font-weight="700" fill="#3F7459"><tspan x="936" dy="0">Okuma kapsamı</tspan></text>
+      <text class="mono" x="936" y="128" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="936" dy="0">pools</tspan></text><text class="mono" x="936" y="150" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="936" dy="0">sensor_readings</tspan></text><text class="mono" x="936" y="172" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="936" dy="0">pool_system_status</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="920" y="250" width="300" height="130" rx="4" fill="#FFFFFF" stroke="#9B7330" stroke-width="1.2"/>
+      <rect x="920" y="250" width="300" height="40" rx="4" fill="#F8F2E6"/>
+      <rect x="920" y="286" width="300" height="4" fill="#F8F2E6"/>
+      <line x1="920" y1="290" x2="1220" y2="290" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="936" y="275" text-anchor="start" font-size="15.5" font-weight="700" fill="#9B7330"><tspan x="936" dy="0">Yazma kapsamı</tspan></text>
+      <text class="mono" x="936" y="318" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="936" dy="0">thresholds</tspan></text><text class="mono" x="936" y="340" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="936" dy="0">alarm_settings</tspan></text><text class="mono" x="936" y="362" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="936" dy="0">sensor_event_logs</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="500" y="430" width="430" height="112" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.2"/>
+      <rect x="500" y="430" width="430" height="40" rx="4" fill="#F3F4F6"/>
+      <rect x="500" y="466" width="430" height="4" fill="#F3F4F6"/>
+      <line x1="500" y1="470" x2="930" y2="470" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="516" y="455" text-anchor="start" font-size="15.5" font-weight="700" fill="#1F2937"><tspan x="516" dy="0">Yönetici sınırı</tspan></text>
+      <text class="text" x="516" y="498" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="516" dy="0">servis rolü istemciye verilmez; kayıt işlemleri</tspan><tspan x="516" dy="18">edge function ile sınırlandırılır</tspan></text>
+    </g>
+    <line x1="360" y1="172" x2="489.00" y2="172.00" stroke="#475569" stroke-width="1.5"/><polygon points="500,172 489.00,177.50 489.00,166.50" fill="#475569"/>
+    <g>
+      <rect x="401" y="163" width="58" height="18" rx="3" fill="#FFFFFF" stroke="#475569" stroke-width="1"/>
+      <text class="text" x="430" y="176" text-anchor="middle" font-size="11" font-weight="750" fill="#475569"><tspan x="430" dy="0">kimlik</tspan></text>
+    </g>
+    <path d="M780 155 L850 155 L850 110 L909 110" fill="none" stroke="#3F7459" stroke-width="1.5"/><polygon points="920,110 909.00,115.50 909.00,104.50" fill="#3F7459"/>
+    <g>
+      <rect x="821" y="101" width="58" height="18" rx="3" fill="#FFFFFF" stroke="#3F7459" stroke-width="1"/>
+      <text class="text" x="850" y="114" text-anchor="middle" font-size="11" font-weight="750" fill="#3F7459"><tspan x="850" dy="0">SELECT</tspan></text>
+    </g>
+    <path d="M780 190 L850 190 L850 300 L909 300" fill="none" stroke="#9B7330" stroke-width="1.5"/><polygon points="920,300 909.00,305.50 909.00,294.50" fill="#9B7330"/>
+    <g>
+      <rect x="796.5" y="291" width="107" height="18" rx="3" fill="#FFFFFF" stroke="#9B7330" stroke-width="1"/>
+      <text class="text" x="850" y="304" text-anchor="middle" font-size="11" font-weight="750" fill="#9B7330"><tspan x="850" dy="0">UPDATE/INSERT</tspan></text>
+    </g>
+  
+</svg>

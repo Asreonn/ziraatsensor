@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>AICO 2209-A Final Rapor Taslağı</title>
+  <style>
+    @page { size: A4 portrait; margin: 16mm; }
+    body { margin: 0; color: #111; font-family: "DejaVu Serif", "Liberation Serif", Georgia, serif; font-size: 12pt; line-height: 1.45; }
+    h1 { font-size: 22pt; margin: 0 0 14pt; }
+    h2 { font-size: 15pt; margin: 18pt 0 8pt; }
+    p { margin: 0 0 8pt; }
+    img { width: 100%; max-height: 115mm; object-fit: contain; border: 1px solid #d8dde5; }
+    .caption { font-size: 10pt; color: #334155; }
+  </style>
+</head>
+<body>
+  <h1>AICO Alg Havuzu Kontrol Sistemi 2209-A Final Rapor Taslağı</h1>
+<h2>Özet</h2>
+<p>Bu çalışmada alg havuzlarında su kalitesi ve çevresel koşulların izlenmesi için düşük maliyetli, bulut tabanlı ve web paneli ile desteklenen bir kontrol sistemi geliştirilmiştir. Sistem; pH, EC/TDS, çözünmüş oksijen, ışık, su sıcaklığı, hava sıcaklığı ve nem değişkenlerini izlemek üzere tasarlanmıştır. ESP8266 tabanlı kenar düğüm sensör verilerini toplar, Supabase/PostgreSQL altyapısına iletir ve web paneli bu verileri canlı izleme, grafikleme, olay günlüğü, alarm ve dışa aktarım işlevleri için kullanır.</p>
+<h2>Anahtar Kelimeler</h2>
+<p>Alg havuzu izleme, ESP8266, Supabase, su kalitesi, IoT, sensör ağı, alarm yönetimi.</p>
+<h2>Giriş ve Problem Tanımı</h2>
+<p>Alg üretim havuzlarında pH, iletkenlik, çözünmüş oksijen, ışık ve sıcaklık değişimleri üretim verimini doğrudan etkileyebilir. Bu değişkenlerin elle ve seyrek aralıklarla takip edilmesi, ani bozulmaların geç fark edilmesine neden olur. Proje bu problemi, sürekli ölçüm alan ve ölçüm verisini merkezi bir veri tabanında saklayan bir izleme mimarisiyle ele alır.</p>
+<h2>Amaç ve Hedefler</h2>
+<p>Projenin amacı, alg havuzu koşullarını izleyebilen, kullanıcı tarafından eşik değerleri yapılandırılabilen ve kritik durumlarda alarm üretebilen bir prototip geliştirmektir. Hedefler; çoklu sensör okuma, kablosuz veri aktarımı, kullanıcıya bağlı cihaz yönetimi, veritabanı kayıt modeli, canlı web paneli, alarm olay günlüğü ve raporlanabilir veri çıktısı üretimidir.</p>
+<h2>Yöntem</h2>
+<p>Sistem mimarisi üç ana katmandan oluşur: saha katmanı, veri katmanı ve kullanıcı arayüzü katmanı. Saha katmanında ESP8266 NodeMCU, ADS1115 analog-dijital dönüştürücü ve dijital sensörler birlikte çalışır. Veri katmanında Supabase/PostgreSQL tabloları ölçüm, cihaz durumu, kullanıcı tercihi ve alarm olaylarını saklar. Arayüz katmanında React tabanlı panel canlı durum, grafik, eşik yönetimi ve veri dışa aktarımı sağlar.</p>
+<h2>Geliştirilen Sistem</h2>
+<p>Şekil 1 genel sistem mimarisini, Şekil 2 donanım veri toplama zincirini ve Şekil 3 ölçüm paketinin panelde kullanılmasına kadar izlediği veri hattını göstermektedir. Bu yapı, cihazdan gelen ölçümlerin hem zaman serisi kayıtlarına hem de cihaz sağlık durumuna dönüştürülmesini sağlar.</p>
+<h2>Veritabanı ve Yetkilendirme</h2>
+<p>Veritabanı tasarımında kullanıcı, havuz, ölçüm, cihaz durumu ve alarm olayları ayrı tablolarla temsil edilmiştir. Kullanıcıya ait kayıtlar Supabase Auth ve RLS ilkeleriyle ayrılmıştır. Bu sayede panel yalnızca oturumdaki kullanıcıya ait havuz ve ölçüm kayıtlarını okuyabilir. Cihaz sahiplenme akışı, ilk kurulumda kullanıcıya bağlı olmayan havuz kaydının doğrulama sonrasında ilgili hesaba bağlanmasını sağlar.</p>
+<h2>Gömülü Yazılım ve Alarm Mantığı</h2>
+<p>ESP8266 yazılımı başlatma, arayüz hazırlama, kablosuz ağ doğrulama, yapılandırma okuma, ölçüm alma, eşik değerlendirme ve veri gönderimi adımlarından oluşur. Alarm mantığında sensör değeri önce geçerlilik denetiminden geçirilir, ardından uyarı ve kritik eşikler ile karşılaştırılır. Alarm susturma işlemi yalnızca aktif alarm anahtarı için geçerlidir ve alarm normale döndüğünde temizlenir.</p>
+<h2>Bulgular</h2>
+<p>Proje sonunda sensör verisini alan, Supabase üzerinde saklayan, kullanıcı bazlı panelde görüntüleyen ve eşik/alarm yapılandırmasını kalıcılaştıran bir prototip mimari oluşturulmuştur. Veritabanı tarafında `sensor_readings`, `pool_system_status`, `sensor_event_logs`, `pools` ve `user_preferences` tabloları tanımlanmıştır. Panel tarafında canlı sensör kartları, anomali/olay akışı, sistem durumu ve CSV dışa aktarım işlevleri yapılandırılmıştır.</p>
+<h2>Doğrulama</h2>
+<p>Doğrulama; donanım bağlantı durumu, ölçüm kaydının oluşması, cihaz sağlık durumunun güncellenmesi, alarm olay günlüğü, panel görünürlüğü ve veri dışa aktarımı başlıklarında yapılmalıdır. Sayısal deney sonuçları rapora eklenirken sensör kalibrasyonu, ölçüm periyodu, örnek sayısı ve gözlenen hata/kararlılık bilgileri ayrıca tablo halinde verilmelidir. Bu raporda ölçüm değeri uydurulmamış, mevcut proje çıktıları ve doğrulama yöntemi yazılmıştır.</p>
+<h2>Sonuç ve Öneriler</h2>
+<p>Geliştirilen prototip, alg havuzları için düşük maliyetli bir izleme ve erken uyarı yaklaşımı sunar. Sistem mimarisi yeni sensörlerin eklenmesine, farklı havuzların kullanıcı bazlı yönetilmesine ve ölçüm geçmişinin raporlanmasına uygundur. Sonraki aşamada uzun süreli saha ölçümleri, sensör kalibrasyon eğrileri, mobil bildirimler ve otomatik kontrol çıkışları ile çalışma genişletilebilir.</p>
+<h2>Final Raporda Bulunması Gereken Ekler</h2>
+<p>- Proje başlığı, yürütücü öğrenci, danışman ve kurum bilgileri.<br>- Kullanılan donanım listesi ve bağlantı şeması.<br>- Veritabanı tablo sözlüğü ve veri akış açıklaması.<br>- Sensör kalibrasyon yöntemi ve deney koşulları.<br>- Ölçüm sonuçları, grafikler, alarm örnekleri ve dışa aktarılan veri örneği.<br>- Sonuç, kazanımlar, sınırlılıklar ve gelecek çalışma önerileri.<br></p>
+</body>
+</html>

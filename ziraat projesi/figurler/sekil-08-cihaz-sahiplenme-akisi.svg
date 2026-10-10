@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1500" height="560" viewBox="0 0 1500 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig08-title fig08-desc">
+  <title id="fig08-title">Cihaz sahiplenme akışı</title>
+  <desc id="fig08-desc">Cihaz sahiplenme akışı</desc>
+  <defs>
+    <style>
+      .text { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; letter-spacing: 0; }
+      .mono { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; letter-spacing: 0; }
+    </style>
+  </defs>
+  <rect width="1500" height="560" fill="#FFFFFF"/>
+  
+    
+    <g>
+      <rect x="70" y="120" width="250" height="98" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.2"/>
+      <rect x="70" y="120" width="250" height="40" rx="4" fill="#F3F4F6"/>
+      <rect x="70" y="156" width="250" height="4" fill="#F3F4F6"/>
+      <line x1="70" y1="160" x2="320" y2="160" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="86" y="145" text-anchor="start" font-size="15.5" font-weight="700" fill="#1F2937"><tspan x="86" dy="0">Kullanıcı oturumu</tspan></text>
+      <text class="mono" x="86" y="188" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="86" dy="0">auth.uid()</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="430" y="120" width="250" height="98" rx="4" fill="#FFFFFF" stroke="#3F7459" stroke-width="1.2"/>
+      <rect x="430" y="120" width="250" height="40" rx="4" fill="#ECF4EF"/>
+      <rect x="430" y="156" width="250" height="4" fill="#ECF4EF"/>
+      <line x1="430" y1="160" x2="680" y2="160" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="446" y="145" text-anchor="start" font-size="15.5" font-weight="700" fill="#3F7459"><tspan x="446" dy="0">Çalışma alanı</tspan></text>
+      <text class="mono" x="446" y="188" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="446" dy="0">user_preferences</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="790" y="120" width="250" height="98" rx="4" fill="#FFFFFF" stroke="#45688F" stroke-width="1.2"/>
+      <rect x="790" y="120" width="250" height="40" rx="4" fill="#EEF2F8"/>
+      <rect x="790" y="156" width="250" height="4" fill="#EEF2F8"/>
+      <line x1="790" y1="160" x2="1040" y2="160" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="806" y="145" text-anchor="start" font-size="15.5" font-weight="700" fill="#45688F"><tspan x="806" dy="0">Cihaz kimliği</tspan></text>
+      <text class="mono" x="806" y="188" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="806" dy="0">target_pool_id</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="1150" y="120" width="280" height="98" rx="4" fill="#FFFFFF" stroke="#9B7330" stroke-width="1.2"/>
+      <rect x="1150" y="120" width="280" height="40" rx="4" fill="#F8F2E6"/>
+      <rect x="1150" y="156" width="280" height="4" fill="#F8F2E6"/>
+      <line x1="1150" y1="160" x2="1430" y2="160" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="1166" y="145" text-anchor="start" font-size="15.5" font-weight="700" fill="#9B7330"><tspan x="1166" dy="0">Sahiplenilmiş havuz</tspan></text>
+      <text class="mono" x="1166" y="188" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="1166" dy="0">pools.user_id = auth.uid()</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="610" y="360" width="380" height="95" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.2"/>
+      <rect x="610" y="360" width="380" height="40" rx="4" fill="#F3F4F6"/>
+      <rect x="610" y="396" width="380" height="4" fill="#F3F4F6"/>
+      <line x1="610" y1="400" x2="990" y2="400" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="626" y="385" text-anchor="start" font-size="15.5" font-weight="700" fill="#1F2937"><tspan x="626" dy="0">Sahipsiz başlangıç</tspan></text>
+      <text class="text" x="626" y="428" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="626" dy="0">pools.user_id NULL olabilir; claim_pool()</tspan><tspan x="626" dy="18">sonrası kullanıcı hesabına bağlanır</tspan></text>
+    </g>
+    <line x1="320" y1="169" x2="419.00" y2="169.00" stroke="#475569" stroke-width="1.5"/><polygon points="430,169 419.00,174.50 419.00,163.50" fill="#475569"/>
+    <line x1="680" y1="169" x2="779.00" y2="169.00" stroke="#45688F" stroke-width="1.5"/><polygon points="790,169 779.00,174.50 779.00,163.50" fill="#45688F"/>
+    <line x1="1040" y1="169" x2="1139.00" y2="169.00" stroke="#9B7330" stroke-width="1.5"/><polygon points="1150,169 1139.00,174.50 1139.00,163.50" fill="#9B7330"/>
+    <path d="M915 218 L915 300 L800 300 L800 349" fill="none" stroke="#45688F" stroke-width="1.5"/><polygon points="800,360 794.50,349.00 805.50,349.00" fill="#45688F"/>
+    <g>
+      <rect x="750" y="291" width="100" height="18" rx="3" fill="#FFFFFF" stroke="#45688F" stroke-width="1"/>
+      <text class="text" x="800" y="304" text-anchor="middle" font-size="11" font-weight="750" fill="#45688F"><tspan x="800" dy="0">claim_pool()</tspan></text>
+    </g>
+  
+</svg>

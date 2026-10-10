@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1240" height="1754" viewBox="0 0 1240 1754" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="report-page-2-title report-page-2-desc">
+  <title id="report-page-2-title">Özet ve Amaç</title>
+  <desc id="report-page-2-desc">Özet ve Amaç</desc>
+  <defs>
+    <style>
+      .text { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; letter-spacing: 0; }
+      .mono { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; letter-spacing: 0; }
+    </style>
+  </defs>
+  <rect width="1240" height="1754" fill="#FFFFFF"/>
+  <text class="text" x="95" y="120" text-anchor="start" font-size="30" font-weight="800" fill="#1F2937"><tspan x="95" dy="0">Özet ve Amaç</tspan></text><text class="text" x="95" y="190" text-anchor="start" font-size="20" font-weight="500" fill="#374151"><tspan x="95" dy="0">Alg havuzlarında su kalitesi ve çevresel koşulların düzenli izlenmesi üretim</tspan><tspan x="95" dy="30">kararlılığı için önemlidir.</tspan></text><text class="text" x="95" y="274" text-anchor="start" font-size="20" font-weight="500" fill="#374151"><tspan x="95" dy="0">Bu proje, ESP8266 tabanlı ölçüm, Supabase veri kaydı, web paneli ve alarm</tspan><tspan x="95" dy="30">yönetimini bir prototipte birleştirir.</tspan></text><line x1="95" y1="1620" x2="1145" y2="1620" stroke="#CBD5E1"/><text class="text" x="95" y="1660" text-anchor="start" font-size="13" font-weight="500" fill="#6B7280"><tspan x="95" dy="0">AICO 2209-A Final Rapor Taslağı</tspan></text><text class="text" x="1145" y="1660" text-anchor="end" font-size="13" font-weight="500" fill="#6B7280"><tspan x="1145" dy="0">2</tspan></text>
+</svg>

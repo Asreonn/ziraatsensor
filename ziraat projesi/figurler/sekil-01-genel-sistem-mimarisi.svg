@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1640" height="620" viewBox="0 0 1640 620" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig01-title fig01-desc">
+  <title id="fig01-title">Genel sistem mimarisi</title>
+  <desc id="fig01-desc">Genel sistem mimarisi</desc>
+  <defs>
+    <style>
+      .text { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; letter-spacing: 0; }
+      .mono { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; letter-spacing: 0; }
+    </style>
+  </defs>
+  <rect width="1640" height="620" fill="#FFFFFF"/>
+  
+    <rect x="40" y="80" width="1560" height="480" rx="10" fill="#F3F4F6" stroke="#CBD5E1"/>
+    <line x1="665" y1="100" x2="665" y2="500" stroke="#CBD5E1" stroke-width="1" stroke-dasharray="2 6"/>
+    <line x1="1285" y1="100" x2="1285" y2="500" stroke="#CBD5E1" stroke-width="1" stroke-dasharray="2 6"/>
+    <text class="text" x="355" y="128" text-anchor="middle" font-size="14" font-weight="800" fill="#6B7280"><tspan x="355" dy="0">SAHA KATMANI</tspan></text>
+    <text class="text" x="975" y="128" text-anchor="middle" font-size="14" font-weight="800" fill="#6B7280"><tspan x="975" dy="0">VERİ KATMANI</tspan></text>
+    <text class="text" x="1440" y="128" text-anchor="middle" font-size="14" font-weight="800" fill="#6B7280"><tspan x="1440" dy="0">UYGULAMA KATMANI</tspan></text>
+    
+    <g>
+      <rect x="80" y="180" width="240" height="210" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.2"/>
+      <rect x="80" y="180" width="240" height="40" rx="4" fill="#F3F4F6"/>
+      <rect x="80" y="216" width="240" height="4" fill="#F3F4F6"/>
+      <line x1="80" y1="220" x2="320" y2="220" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="96" y="205" text-anchor="start" font-size="15.5" font-weight="700" fill="#1F2937"><tspan x="96" dy="0">Sensör grubu</tspan></text>
+      <text class="text" x="96" y="248" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="96" dy="0">pH</tspan></text><text class="text" x="96" y="270" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="96" dy="0">EC / TDS</tspan></text><text class="text" x="96" y="292" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="96" dy="0">DO</tspan></text><text class="text" x="96" y="314" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="96" dy="0">LDR</tspan></text><text class="text" x="96" y="336" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="96" dy="0">DS18B20 + DHT22</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="390" y="180" width="240" height="210" rx="4" fill="#FFFFFF" stroke="#45688F" stroke-width="1.2"/>
+      <rect x="390" y="180" width="240" height="40" rx="4" fill="#EEF2F8"/>
+      <rect x="390" y="216" width="240" height="4" fill="#EEF2F8"/>
+      <line x1="390" y1="220" x2="630" y2="220" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="406" y="205" text-anchor="start" font-size="15.5" font-weight="700" fill="#45688F"><tspan x="406" dy="0">ESP8266 kenar düğüm</tspan></text>
+      <text class="text" x="406" y="248" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="406" dy="0">ADS1115 okuma</tspan></text><text class="text" x="406" y="270" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="406" dy="0">eşik ön kontrolü</tspan></text><text class="text" x="406" y="292" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="406" dy="0">yerel alarm çıkışı</tspan></text><text class="text" x="406" y="314" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="406" dy="0">EEPROM ayar önbelleği</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="700" y="180" width="240" height="210" rx="4" fill="#FFFFFF" stroke="#3F7459" stroke-width="1.2"/>
+      <rect x="700" y="180" width="240" height="40" rx="4" fill="#ECF4EF"/>
+      <rect x="700" y="216" width="240" height="4" fill="#ECF4EF"/>
+      <line x1="700" y1="220" x2="940" y2="220" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="716" y="205" text-anchor="start" font-size="15.5" font-weight="700" fill="#3F7459"><tspan x="716" dy="0">Supabase API</tspan></text>
+      <text class="text" x="716" y="248" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="716" dy="0">PostgREST uç noktaları</tspan></text><text class="text" x="716" y="270" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="716" dy="0">Auth oturumu</tspan></text><text class="text" x="716" y="292" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="716" dy="0">RLS yetkilendirme</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="1010" y="180" width="240" height="210" rx="4" fill="#FFFFFF" stroke="#3F7459" stroke-width="1.2"/>
+      <rect x="1010" y="180" width="240" height="40" rx="4" fill="#ECF4EF"/>
+      <rect x="1010" y="216" width="240" height="4" fill="#ECF4EF"/>
+      <line x1="1010" y1="220" x2="1250" y2="220" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="1026" y="205" text-anchor="start" font-size="15.5" font-weight="700" fill="#3F7459"><tspan x="1026" dy="0">PostgreSQL</tspan></text>
+      <text class="mono" x="1026" y="248" text-anchor="start" font-size="13" font-weight="500" fill="#374151"><tspan x="1026" dy="0">sensor_readings</tspan></text><text class="mono" x="1026" y="269" text-anchor="start" font-size="13" font-weight="500" fill="#374151"><tspan x="1026" dy="0">pool_system_status</tspan></text><text class="mono" x="1026" y="290" text-anchor="start" font-size="13" font-weight="500" fill="#374151"><tspan x="1026" dy="0">pools</tspan></text><text class="mono" x="1026" y="311" text-anchor="start" font-size="13" font-weight="500" fill="#374151"><tspan x="1026" dy="0">sensor_event_logs</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="1320" y="180" width="240" height="210" rx="4" fill="#FFFFFF" stroke="#9B7330" stroke-width="1.2"/>
+      <rect x="1320" y="180" width="240" height="40" rx="4" fill="#F8F2E6"/>
+      <rect x="1320" y="216" width="240" height="4" fill="#F8F2E6"/>
+      <line x1="1320" y1="220" x2="1560" y2="220" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="1336" y="205" text-anchor="start" font-size="15.5" font-weight="700" fill="#9B7330"><tspan x="1336" dy="0">Web panel</tspan></text>
+      <text class="text" x="1336" y="248" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="1336" dy="0">grafikler</tspan></text><text class="text" x="1336" y="270" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="1336" dy="0">durum</tspan></text><text class="text" x="1336" y="292" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="1336" dy="0">ayarlar</tspan></text>
+    </g>
+    <line x1="322" y1="285" x2="379.00" y2="285.00" stroke="#475569" stroke-width="1.5"/><polygon points="390,285 379.00,290.50 379.00,279.50" fill="#475569"/>
+    <rect x="334" y="261" width="44" height="16" fill="#F3F4F6"/><text class="text" x="356" y="273" text-anchor="middle" font-size="12" font-weight="700" fill="#475569"><tspan x="356" dy="0">ölçüm</tspan></text>
+    <line x1="632" y1="285" x2="689.00" y2="285.00" stroke="#3F7459" stroke-width="1.5"/><polygon points="700,285 689.00,290.50 689.00,279.50" fill="#3F7459"/>
+    <rect x="615" y="261" width="102" height="16" fill="#F3F4F6"/><text class="text" x="666" y="273" text-anchor="middle" font-size="12" font-weight="700" fill="#3F7459"><tspan x="666" dy="0">REST / HTTPS</tspan></text>
+    <line x1="942" y1="285" x2="999.00" y2="285.00" stroke="#3F7459" stroke-width="1.5"/><polygon points="1010,285 999.00,290.50 999.00,279.50" fill="#3F7459"/>
+    <rect x="960" y="261" width="32" height="16" fill="#F3F4F6"/><text class="text" x="976" y="273" text-anchor="middle" font-size="12" font-weight="700" fill="#3F7459"><tspan x="976" dy="0">SQL</tspan></text>
+    <line x1="1252" y1="285" x2="1309.00" y2="285.00" stroke="#9B7330" stroke-width="1.5"/><polygon points="1320,285 1309.00,290.50 1309.00,279.50" fill="#9B7330"/>
+    <rect x="1261" y="261" width="50" height="16" fill="#F3F4F6"/><text class="text" x="1286" y="273" text-anchor="middle" font-size="12" font-weight="700" fill="#9B7330"><tspan x="1286" dy="0">okuma</tspan></text>
+    <path d="M820 390 L820 470 L510 470 L510 403" fill="none" stroke="#3F7459" stroke-width="1.5" stroke-dasharray="6 5"/><polygon points="510,392 515.50,403.00 504.50,403.00" fill="#3F7459"/>
+    <g>
+      <rect x="576" y="461" width="178" height="18" rx="3" fill="#FFFFFF" stroke="#3F7459" stroke-width="1"/>
+      <text class="text" x="665" y="474" text-anchor="middle" font-size="11" font-weight="750" fill="#3F7459"><tspan x="665" dy="0">periyodik yapılandırma</tspan></text>
+    </g>
+    <path d="M1440 390 L1440 470 L1130 470 L1130 403" fill="none" stroke="#9B7330" stroke-width="1.5" stroke-dasharray="6 5"/><polygon points="1130,392 1135.50,403.00 1124.50,403.00" fill="#9B7330"/>
+    <g>
+      <rect x="1216" y="461" width="138" height="18" rx="3" fill="#FFFFFF" stroke="#9B7330" stroke-width="1"/>
+      <text class="text" x="1285" y="474" text-anchor="middle" font-size="11" font-weight="750" fill="#9B7330"><tspan x="1285" dy="0">eşik / alarm ayarı</tspan></text>
+    </g>
+    <line x1="80" y1="525" x2="116.00" y2="525.00" stroke="#475569" stroke-width="1.5"/>
+    <text class="text" x="124" y="529" text-anchor="start" font-size="12" font-weight="500" fill="#475569"><tspan x="124" dy="0">veri akışı</tspan></text>
+    <line x1="240" y1="525" x2="276" y2="525" stroke="#6B7280" stroke-width="1.8" stroke-dasharray="6 5"/>
+    <text class="text" x="284" y="529" text-anchor="start" font-size="12" font-weight="500" fill="#475569"><tspan x="284" dy="0">yapılandırma geri beslemesi</tspan></text>
+  
+</svg>

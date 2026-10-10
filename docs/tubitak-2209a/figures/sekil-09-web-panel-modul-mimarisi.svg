@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1380" height="600" viewBox="0 0 1380 600" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig09-title fig09-desc">
+  <title id="fig09-title">Web panel modül mimarisi</title>
+  <desc id="fig09-desc">Web panel modül mimarisi</desc>
+  <defs>
+    <style>
+      .text { font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif; letter-spacing: 0; }
+      .mono { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; letter-spacing: 0; }
+    </style>
+  </defs>
+  <rect width="1380" height="600" fill="#FFFFFF"/>
+  
+    
+    <g>
+      <rect x="75" y="95" width="305" height="115" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.2"/>
+      <rect x="75" y="95" width="305" height="40" rx="4" fill="#F3F4F6"/>
+      <rect x="75" y="131" width="305" height="4" fill="#F3F4F6"/>
+      <line x1="75" y1="135" x2="380" y2="135" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="91" y="120" text-anchor="start" font-size="15.5" font-weight="700" fill="#1F2937"><tspan x="91" dy="0">AuthProvider</tspan></text>
+      <text class="text" x="91" y="163" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="91" dy="0">oturum izleme</tspan></text><text class="text" x="91" y="185" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="91" dy="0">giriş/kayıt</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="525" y="95" width="330" height="115" rx="4" fill="#FFFFFF" stroke="#45688F" stroke-width="1.2"/>
+      <rect x="525" y="95" width="330" height="40" rx="4" fill="#EEF2F8"/>
+      <rect x="525" y="131" width="330" height="4" fill="#EEF2F8"/>
+      <line x1="525" y1="135" x2="855" y2="135" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="541" y="120" text-anchor="start" font-size="15.5" font-weight="700" fill="#45688F"><tspan x="541" dy="0">DataProvider</tspan></text>
+      <text class="text" x="541" y="163" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="541" dy="0">havuz yükleme</tspan></text><text class="text" x="541" y="185" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="541" dy="0">canlı/mock veri</tspan></text><text class="text" x="541" y="207" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="541" dy="0">eşik ve alarm güncelleme</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="1000" y="95" width="305" height="115" rx="4" fill="#FFFFFF" stroke="#9B7330" stroke-width="1.2"/>
+      <rect x="1000" y="95" width="305" height="40" rx="4" fill="#F8F2E6"/>
+      <rect x="1000" y="131" width="305" height="4" fill="#F8F2E6"/>
+      <line x1="1000" y1="135" x2="1305" y2="135" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="1016" y="120" text-anchor="start" font-size="15.5" font-weight="700" fill="#9B7330"><tspan x="1016" dy="0">Sayfalar</tspan></text>
+      <text class="text" x="1016" y="163" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="1016" dy="0">Overview</tspan></text><text class="text" x="1016" y="185" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="1016" dy="0">Settings</tspan></text><text class="text" x="1016" y="207" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="1016" dy="0">SystemStatus</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="310" y="380" width="330" height="125" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.2"/>
+      <rect x="310" y="380" width="330" height="40" rx="4" fill="#F3F4F6"/>
+      <rect x="310" y="416" width="330" height="4" fill="#F3F4F6"/>
+      <line x1="310" y1="420" x2="640" y2="420" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="326" y="405" text-anchor="start" font-size="15.5" font-weight="700" fill="#1F2937"><tspan x="326" dy="0">Gösterge bileşenleri</tspan></text>
+      <text class="text" x="326" y="448" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="326" dy="0">SensorCard</tspan></text><text class="text" x="326" y="470" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="326" dy="0">SparklineChart</tspan></text><text class="text" x="326" y="492" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="326" dy="0">AnomalyFeed</tspan></text>
+    </g>
+    
+    <g>
+      <rect x="790" y="380" width="330" height="125" rx="4" fill="#FFFFFF" stroke="#475569" stroke-width="1.2"/>
+      <rect x="790" y="380" width="330" height="40" rx="4" fill="#F3F4F6"/>
+      <rect x="790" y="416" width="330" height="4" fill="#F3F4F6"/>
+      <line x1="790" y1="420" x2="1120" y2="420" stroke="#CBD5E1" stroke-width="1"/>
+      <text class="text" x="806" y="405" text-anchor="start" font-size="15.5" font-weight="700" fill="#1F2937"><tspan x="806" dy="0">İşlem bileşenleri</tspan></text>
+      <text class="text" x="806" y="448" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="806" dy="0">SensorDetailModal</tspan></text><text class="text" x="806" y="470" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="806" dy="0">PoolExportPanel</tspan></text><text class="text" x="806" y="492" text-anchor="start" font-size="14" font-weight="500" fill="#374151"><tspan x="806" dy="0">SensorCalibrationDialog</tspan></text>
+    </g>
+    <line x1="380" y1="152" x2="514.00" y2="152.00" stroke="#475569" stroke-width="1.5"/><polygon points="525,152 514.00,157.50 514.00,146.50" fill="#475569"/>
+    <line x1="855" y1="152" x2="989.00" y2="152.00" stroke="#9B7330" stroke-width="1.5"/><polygon points="1000,152 989.00,157.50 989.00,146.50" fill="#9B7330"/>
+    <path d="M690 210 L690 300 L475 300 L475 369" fill="none" stroke="#45688F" stroke-width="1.5"/><polygon points="475,380 469.50,369.00 480.50,369.00" fill="#45688F"/>
+    <path d="M690 210 L690 300 L955 300 L955 369" fill="none" stroke="#45688F" stroke-width="1.5"/><polygon points="955,380 949.50,369.00 960.50,369.00" fill="#45688F"/>
+  
+</svg>
